@@ -2,7 +2,7 @@ apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
   name: create-giantswarm-cluster
-  namespace: tekton
+  namespace: nightly
 spec:
   params:
     - name: PULL_PULL_SHA

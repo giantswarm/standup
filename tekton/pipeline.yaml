@@ -2,7 +2,7 @@ apiVersion: tekton.dev/v1beta1
 kind: Pipeline
 metadata:
   name: pipeline-cis
-  namespace: tekton
+  namespace: nightly
 spec:
   resources:
   - name: releases
