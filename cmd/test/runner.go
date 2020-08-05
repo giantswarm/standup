@@ -65,7 +65,7 @@ func (r *runner) run(ctx context.Context, cmd *cobra.Command, args []string) err
 
 	// Create REST config for the control plane
 	var restConfig *rest.Config
-	if r.flag.InCluster == true {
+	if r.flag.InCluster {
 		var err error
 		restConfig, err = rest.InClusterConfig()
 		if err != nil {

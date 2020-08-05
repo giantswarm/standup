@@ -166,6 +166,10 @@ func (t *Test) RunKubernetesConformance(ctx context.Context) error {
 		},
 	}
 	_, err = t.k8sClient.CoreV1().Pods(namespace.Name).Create(ctx, &pod, metav1.CreateOptions{})
+	if err != nil {
+		return microerror.Mask(err)
+	}
+
 	return nil
 }
 
