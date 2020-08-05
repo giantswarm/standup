@@ -5,9 +5,9 @@ metadata:
   namespace: tekton
 spec:
   params:
-    - name: version
+    - name: PULL_PULL_SHA
       type: string
-      description: Giantswarm version of the cluster to use
+      description: Git SHA for commit to test
   steps:
     - name: do-create
       image: busybox
