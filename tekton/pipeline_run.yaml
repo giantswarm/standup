@@ -1,0 +1,11 @@
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  name: pipelinerun-with-version
+  namespace: tekton
+spec:
+  pipelineRef:
+    name: pipeline-with-version
+  params:
+    - name: "version"
+      value: "v11.3.0"

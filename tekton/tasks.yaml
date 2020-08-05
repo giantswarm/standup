@@ -1,0 +1,13 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: create-giantswarm-cluster
+  namespace: tekton
+spec:
+  params:
+    - name: version
+      type: string
+      description: Giantswarm version of the cluster to use
+  steps:
+    - name: do-create
+      image: busybox

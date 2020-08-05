@@ -1,0 +1,18 @@
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: pipeline-with-version
+  namespace: tekton
+spec:
+  params:
+    - name: version
+      type: string
+      description: Giantswarm version of the cluster to use
+      default: v12.0.0
+  tasks:
+    - name: create-cluster
+      taskRef:
+        name: create-giantswarm-cluster
+      params:
+        - name: version
+          value: "$(params.version)"
