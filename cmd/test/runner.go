@@ -97,7 +97,7 @@ func (r *runner) run(ctx context.Context, cmd *cobra.Command, args []string) err
 	}
 
 	// Randomize the name
-	release.Name = release.Name+"-"+strconv.Itoa(int(time.Now().Unix()))
+	release.Name = release.Name + "-" + strconv.Itoa(int(time.Now().Unix()))
 
 	// Create the Release CR
 	_, err = k8sClient.G8sClient().ReleaseV1alpha1().Releases().Create(context.Background(), &release, v1.CreateOptions{})
