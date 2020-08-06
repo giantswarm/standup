@@ -1,19 +1,18 @@
 package gsclient
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
-	"encoding/base64"
-	"errors"
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/url"
+	"os/exec"
+	"strings"
 
 	"github.com/Masterminds/semver/v3"
 	gsclient "github.com/giantswarm/gsclientgen/v2/client"
-	"github.com/giantswarm/gsclientgen/v2/client/auth_tokens"
-	"github.com/giantswarm/gsclientgen/v2/client/clusters"
-	"github.com/giantswarm/gsclientgen/v2/client/key_pairs"
-	"github.com/giantswarm/gsclientgen/v2/models"
 	"github.com/giantswarm/microerror"
 	"github.com/giantswarm/micrologger"
 	"github.com/go-openapi/runtime"
@@ -38,6 +37,29 @@ type Client struct {
 
 	client *gsclient.Gsclientgen
 }
+
+// TODO: Use the gsctl type directly
+type CreationResponse struct {
+	ClusterID string `json:"id"`
+	Result    string `json:"result"`
+}
+
+// TODO: Use the gsctl type directly
+type DeletionResponse struct {
+	ClusterID string `json:"id"`
+	Result    string `json:"result"`
+}
+
+type KubeconfigResponse struct {
+	Kubeconfig string `json:""kubeconfig`
+	Result     string `json:"result"`
+}
+
+const (
+	CreationResultCreated          = "created"
+	CreationResultCreatedWithError = "created-with-errors"
+	DeletionResultScheduled        = "deletion scheduled"
+)
 
 var providers = []string{
 	"aws",
@@ -101,81 +123,104 @@ func New(config Config) (*Client, error) {
 	return &client, nil
 }
 
-func (c *Client) CreateCluster(ctx context.Context, releaseVersion string, provider string) (string, error) {
-	if c.authWriter == nil {
-		err := c.authorize()
-		if err != nil {
-			return "", microerror.Mask(err)
-		}
+func runWithGsctl(args string) (bytes.Buffer, bytes.Buffer, error) {
+	argsArr := strings.Fields(args)
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	gsctlCmd := &exec.Cmd{
+		Path:   "./gsctl", // TODO: don't hardcode this
+		Args:   append([]string{"./gsctl"}, argsArr...),
+		Stderr: &stderr,
+		Stdout: &stdout,
 	}
 
-	switch provider {
-	case "aws":
-		params := clusters.NewAddClusterV5ParamsWithContext(ctx)
-		params.Body.Name = "test"
-		params.Body.ReleaseVersion = releaseVersion
-		response, err := c.client.Clusters.AddClusterV5(params, c.authWriter)
-		if err != nil {
-			return "", microerror.Mask(err)
-		}
-		return response.Payload.ID, nil
-	default:
-		return "", errors.New("invalid provider")
+	err := gsctlCmd.Run()
+	if err != nil {
+		fmt.Println(stdout.String())
+		fmt.Println(stderr.String())
+		return stdout, stderr, microerror.Mask(err)
 	}
+
+	return stdout, stderr, nil
+}
+
+func (c *Client) CreateCluster(ctx context.Context, releaseVersion string, provider string) (string, error) {
+
+	// TODO: extract and structure all these hardcoded values
+	output, stderr, err := runWithGsctl("--output=json create cluster --owner conformance-testing")
+	// TODO: Handle stderr somehow
+	if stderr.Len() > 0 {
+		fmt.Println(stderr)
+	}
+	if err != nil {
+		return "", microerror.Mask(err)
+	}
+
+	var response CreationResponse
+	err = json.Unmarshal(output.Bytes(), &response)
+	if err != nil {
+		return "", microerror.Mask(err)
+	}
+
+	if response.Result == CreationResultCreatedWithError {
+		return response.ClusterID, microerror.Maskf(clusterCreationError, stderr.String())
+	}
+
+	return response.ClusterID, nil
 }
 
 func (c *Client) DeleteCluster(ctx context.Context, clusterID string) error {
-	if c.authWriter == nil {
-		err := c.authorize()
-		if err != nil {
-			return microerror.Mask(err)
-		}
-	}
 
-	params := clusters.NewDeleteClusterParamsWithContext(ctx)
-	params.ClusterID = clusterID
-	_, err := c.client.Clusters.DeleteCluster(params, c.authWriter)
+	// TODO: extract and structure all these hardcoded values
+	output, stderr, err := runWithGsctl(fmt.Sprintf("--output=json delete cluster %s", clusterID))
+	// TODO: Handle stderr somehow
+	if stderr.Len() > 0 {
+		fmt.Println(stderr)
+	}
 	if err != nil {
 		return microerror.Mask(err)
+	}
+
+	var response DeletionResponse
+	err = json.Unmarshal(output.Bytes(), &response)
+	if err != nil {
+		return microerror.Mask(err)
+	}
+
+	if response.Result != DeletionResultScheduled {
+		return microerror.Maskf(clusterDeletionError, stderr.String())
 	}
 
 	return nil
 }
 
-func (c *Client) GetKeypair(ctx context.Context, clusterID string) (*models.V4AddKeyPairResponse, error) {
-	if c.authWriter == nil {
-		err := c.authorize()
-		if err != nil {
-			return nil, microerror.Mask(err)
-		}
+func (c *Client) GetKubeconfig(ctx context.Context, clusterID string) (string, error) {
+
+	// TODO: extract and structure all these hardcoded values
+	args := fmt.Sprintf("--output=json create kubeconfig --cluster=%s --certificate-organizations system:masters", clusterID)
+	output, stderr, err := runWithGsctl(args)
+	// TODO: Handle stderr somehow
+	if stderr.Len() > 0 {
+		fmt.Println(output)
+		fmt.Println(stderr)
 	}
-
-	var response *key_pairs.AddKeyPairOK
-	{
-		var err error
-		params := key_pairs.NewAddKeyPairParamsWithContext(ctx)
-		params.ClusterID = clusterID
-		response, err = c.client.KeyPairs.AddKeyPair(params, c.authWriter)
-		if err != nil {
-			return nil, microerror.Mask(err)
-		}
-	}
-
-	return response.Payload, nil
-}
-
-func (c *Client) authorize() error {
-	params := auth_tokens.NewCreateAuthTokenParams().WithBody(&models.V4CreateAuthTokenRequest{
-		Email:          c.email,
-		PasswordBase64: base64.StdEncoding.EncodeToString([]byte(c.password)),
-	})
-	response, err := c.client.AuthTokens.CreateAuthToken(params, nil)
 	if err != nil {
-		return microerror.Mask(err)
+		return "", microerror.Mask(err)
 	}
 
-	authHeader := "giantswarm " + response.Payload.AuthToken
-	c.authWriter = httptransport.APIKeyAuth("Authorization", "header", authHeader)
+	var response KubeconfigResponse
+	err = json.Unmarshal(output.Bytes(), &response)
+	if err != nil {
+		return "", microerror.Mask(err)
+	}
 
-	return nil
+	// TODO: Do something useful here or remove it
+	if response.Result != "ok" {
+		fmt.Println("something went wrong creating kubeconfig")
+		fmt.Println(output)
+		fmt.Println(stderr)
+	}
+
+	return response.Kubeconfig, nil
 }

@@ -2,6 +2,7 @@ package test
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"strconv"
@@ -9,7 +10,6 @@ import (
 
 	"github.com/giantswarm/apiextensions/pkg/apis/release/v1alpha1"
 	"github.com/giantswarm/k8sclient/v3/pkg/k8sclient"
-	"github.com/giantswarm/k8sclient/v3/pkg/k8srestconfig"
 	"github.com/giantswarm/microerror"
 	"github.com/giantswarm/micrologger"
 	"github.com/spf13/cobra"
@@ -18,7 +18,6 @@ import (
 	"sigs.k8s.io/yaml"
 
 	"github.com/giantswarm/standup/pkg/gsclient"
-	"github.com/giantswarm/standup/pkg/test"
 )
 
 type runner struct {
@@ -100,6 +99,9 @@ func (r *runner) run(ctx context.Context, cmd *cobra.Command, args []string) err
 	release.Name = release.Name + "-" + strconv.Itoa(int(time.Now().Unix()))
 
 	// Create the Release CR
+	// TODO Re enable me after testing
+	if k8sClient != nil {
+	}
 	_, err = k8sClient.G8sClient().ReleaseV1alpha1().Releases().Create(context.Background(), &release, v1.CreateOptions{})
 	if err != nil {
 		return microerror.Mask(err)
@@ -113,51 +115,26 @@ func (r *runner) run(ctx context.Context, cmd *cobra.Command, args []string) err
 		return microerror.Mask(err)
 	}
 
+	// TODO: Wait + backoff instead of just sleeping
+	// PKI backend needs some time after cluster creation
+	time.Sleep(5 * time.Second)
+
 	// Create a keypair for the new tenant cluster
-	keyPair, err := gsClient.GetKeypair(context.Background(), clusterID)
+	kubeconfig, err := gsClient.GetKubeconfig(context.Background(), clusterID)
 	if err != nil {
 		return microerror.Mask(err)
 	}
 
-	// Create a REST config for the new tenant cluster
-	var tenantConfig *rest.Config
-	{
-		c := k8srestconfig.Config{
-			Logger: r.logger,
-
-			Address:   "",
-			InCluster: false,
-			TLS: k8srestconfig.ConfigTLS{
-				CAData:  []byte(keyPair.CertificateAuthorityData),
-				CrtData: []byte(keyPair.ClientCertificateData),
-				KeyData: []byte(keyPair.ClientKeyData),
-			},
-		}
-		tenantConfig, err = k8srestconfig.New(c)
-		if err != nil {
-			return microerror.Mask(err)
-		}
-	}
-
-	// Create the test client which runs tests on an existing tenant cluster
-	testClient, err := test.New(test.Config{
-		Config: tenantConfig,
-	})
-	if err != nil {
-		return microerror.Mask(err)
-	}
-
-	// Actually run a test
-	err = testClient.RunKubernetesConformance(context.Background())
-	if err != nil {
-		return microerror.Mask(err)
-	}
+	// TODO: Store me somewhere
+	fmt.Println(len(kubeconfig))
 
 	// Clean up
 	err = gsClient.DeleteCluster(context.Background(), clusterID)
 	if err != nil {
 		return microerror.Mask(err)
 	}
+
+	// TODO: Delete release
 
 	return nil
 }
