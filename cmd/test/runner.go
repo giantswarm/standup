@@ -50,9 +50,10 @@ func (r *runner) run(ctx context.Context, cmd *cobra.Command, args []string) err
 		c := gsclient.Config{
 			Logger: r.logger,
 
-			Email:    r.flag.Email,
+			// Email:    r.flag.Email,
 			Endpoint: r.flag.Endpoint,
-			Password: r.flag.Password,
+			// Password: r.flag.Password,
+			Token: r.flag.Token,
 		}
 
 		var err error

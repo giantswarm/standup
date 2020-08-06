@@ -17,15 +17,19 @@ type Config struct {
 	Logger micrologger.Logger
 
 	// Installations configuration
-	Email    string
+	// Email    string
 	Endpoint string
-	Password string
+	// Password string
+	Token string
 }
 
 type Client struct {
-	email    string
+	// 	email    string
 	endpoint string
-	password string
+	// password string
+	token string
+
+	// client *gsclient.Gsclientgen
 }
 
 // TODO: Use the gsctl type directly
@@ -78,12 +82,16 @@ func New(config Config) (*Client, error) {
 		return nil, microerror.Maskf(invalidConfigError, "%T.Logger must not be empty", config)
 	}
 
-	if config.Email == "" {
-		return nil, microerror.Maskf(invalidConfigError, "%T.Email must not be empty", config)
-	}
+	// if config.Email == "" {
+	// 	return nil, microerror.Maskf(invalidConfigError, "%T.Email must not be empty", config)
+	// }
 
-	if config.Password == "" {
-		return nil, microerror.Maskf(invalidConfigError, "%T.Password must not be empty", config)
+	// if config.Password == "" {
+	// 	return nil, microerror.Maskf(invalidConfigError, "%T.Password must not be empty", config)
+	// }
+
+	if config.Token == "" {
+		return nil, microerror.Maskf(invalidConfigError, "%T.Token must not be empty", config)
 	}
 
 	if config.Endpoint == "" {
@@ -95,18 +103,31 @@ func New(config Config) (*Client, error) {
 	// 	return nil, microerror.Maskf(invalidConfigError, "API endpoint URL %s could not be parsed", config.Endpoint)
 	// }
 
+	// tlsConfig := &tls.Config{}
+	// transport := httptransport.New(u.Host, "", []string{u.Scheme})
+	// transport.Transport = &http.Transport{
+	// 	Proxy:           http.ProxyFromEnvironment,
+	// 	TLSClientConfig: tlsConfig,
+	// }
+	// gsClient := gsclient.New(transport, strfmt.Default)
+
 	client := Client{
 		endpoint: config.Endpoint,
-		email:    config.Email,
-		password: config.Password,
+		// email:    config.Email,
+		// password: config.Password,
+		// client:   gsClient,
+		token: config.Token,
 	}
 
 	return &client, nil
 }
 
-func runWithGsctl(args string) (bytes.Buffer, bytes.Buffer, error) {
-	// TODO: Include additional params to gsctl : endpoint, email, password
+func (c *Client) runWithGsctl(args string) (bytes.Buffer, bytes.Buffer, error) {
 	argsArr := strings.Fields(args)
+
+	// Add additional arguments from our client
+	clientArgs := fmt.Sprintf("--endpoint=%s --auth-token=%s", c.endpoint, c.token)
+	argsArr = append(argsArr, strings.Fields(clientArgs)...)
 
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
@@ -130,7 +151,7 @@ func runWithGsctl(args string) (bytes.Buffer, bytes.Buffer, error) {
 func (c *Client) CreateCluster(ctx context.Context, releaseVersion string, provider string) (string, error) {
 
 	// TODO: extract and structure all these hardcoded values
-	output, stderr, err := runWithGsctl("--output=json create cluster --owner conformance-testing")
+	output, stderr, err := c.runWithGsctl("--output=json create cluster --owner conformance-testing")
 	// TODO: Handle stderr somehow
 	if stderr.Len() > 0 {
 		fmt.Println(stderr)
@@ -155,7 +176,7 @@ func (c *Client) CreateCluster(ctx context.Context, releaseVersion string, provi
 func (c *Client) DeleteCluster(ctx context.Context, clusterID string) error {
 
 	// TODO: extract and structure all these hardcoded values
-	output, stderr, err := runWithGsctl(fmt.Sprintf("--output=json delete cluster %s", clusterID))
+	output, stderr, err := c.runWithGsctl(fmt.Sprintf("--output=json delete cluster %s", clusterID))
 	// TODO: Handle stderr somehow
 	if stderr.Len() > 0 {
 		fmt.Println(stderr)
@@ -181,7 +202,7 @@ func (c *Client) GetKubeconfig(ctx context.Context, clusterID string) (string, e
 
 	// TODO: extract and structure all these hardcoded values
 	args := fmt.Sprintf("--output=json create kubeconfig --cluster=%s --certificate-organizations system:masters", clusterID)
-	output, stderr, err := runWithGsctl(args)
+	output, stderr, err := c.runWithGsctl(args)
 	// TODO: Handle stderr somehow
 	if stderr.Len() > 0 {
 		fmt.Println(output)
