@@ -46,22 +46,6 @@ type KubeconfigResponse struct {
 type ClusterEntry struct {
 	ID             string `json:"id"`
 	ReleaseVersion string `json:"release_version"`
-	// 	[
-	//   {
-	//     "create_date": "2020-08-06T16:23:47Z",
-	//     "id": "4jak7",
-	//     "labels": {
-	//       "cluster-operator.giantswarm.io/version": "2.3.2",
-	//       "giantswarm.io/cluster": "4jak7",
-	//       "giantswarm.io/organization": "conformance-testing",
-	//       "release.giantswarm.io/version": "12.1.0-1596731026"
-	//     },
-	//     "name": "Unnamed cluster",
-	//     "owner": "conformance-testing",
-	//     "path": "/v5/clusters/4jak7/",
-	//     "release_version": "12.1.0-1596731026"
-	//   }
-	// ]
 }
 
 const (
