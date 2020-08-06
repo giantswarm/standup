@@ -102,7 +102,7 @@ func findNewRelease(diff string) (releasePath string, provider string, err error
 			if strings.HasSuffix(line, "/release.yaml") {
 				fields := strings.Fields(line)
 				if len(fields) < 2 {
-					err = errors.New(fmt.Sprintf("incorrectly formatted diff: should look like 'A       aws/v13.0.0/release.yaml', found %s", line))
+					err = fmt.Errorf("incorrectly formatted diff: should look like 'A       aws/v13.0.0/release.yaml', found %s", line)
 					return
 				}
 				releasePath = fields[1]
