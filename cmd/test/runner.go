@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -17,6 +18,7 @@ import (
 	"github.com/giantswarm/microerror"
 	"github.com/giantswarm/micrologger"
 	"github.com/spf13/cobra"
+	errors2 "k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/yaml"
@@ -93,7 +95,7 @@ func fetchAndDiff(dir string) (string, error) {
 	return diff, nil
 }
 
-func findNewRelease(diff string) (releasePath string, provider string, release string, err error) {
+func findNewRelease(diff string) (releasePath string, provider string, err error) {
 	{
 		lines := strings.Split(diff, "\n")
 		for _, line := range lines {
@@ -116,12 +118,12 @@ func findNewRelease(diff string) (releasePath string, provider string, release s
 
 	components := strings.Split(releasePath, "/")
 	provider = components[0]
-	release = components[1]
 
 	return
 }
 
 func (r *runner) run(ctx context.Context, cmd *cobra.Command, args []string) error {
+	r.logger.LogCtx(context.Background(), "message", "beginning setup")
 	// Create a GS API client for managing tenant clusters
 	var gsClient *gsclient.Client
 	{
@@ -162,6 +164,7 @@ func (r *runner) run(ctx context.Context, cmd *cobra.Command, args []string) err
 	var release v1alpha1.Release
 	var provider string
 	var releaseVersion string
+	r.logger.LogCtx(context.Background(), "message", "determining release to test")
 	{
 		// Use "git diff" to find the release under test
 		diff, err := fetchAndDiff(r.flag.Releases)
@@ -171,13 +174,13 @@ func (r *runner) run(ctx context.Context, cmd *cobra.Command, args []string) err
 
 		// Parse the git diff to get the release file, version, and provider
 		var releasePath string
-		releasePath, provider, releaseVersion, err = findNewRelease(diff)
+		releasePath, provider, err = findNewRelease(diff)
 		if err != nil {
 			return microerror.Mask(err)
 		}
+		r.logger.LogCtx(context.Background(), "message", "determined target release to test is "+releasePath)
 
-		var release v1alpha1.Release
-		releaseYAML, err := ioutil.ReadFile(releasePath)
+		releaseYAML, err := ioutil.ReadFile(filepath.Join(r.flag.Releases, releasePath))
 		if err != nil {
 			return microerror.Mask(err)
 		}
@@ -188,25 +191,36 @@ func (r *runner) run(ctx context.Context, cmd *cobra.Command, args []string) err
 		}
 
 		// Randomize the name to avoid duplicate names
+		originalName := release.Name
 		release.Name = release.Name + "-" + strconv.Itoa(int(time.Now().Unix()))
+		releaseVersion = strings.TrimPrefix(release.Name, "v")
+		r.logger.LogCtx(context.Background(), "message", fmt.Sprintf("testing release %s for %s as %s", strings.TrimPrefix(originalName, "v"), provider, releaseVersion))
+
 		// Label for future garbage collection
+		if release.Labels == nil {
+			release.Labels = map[string]string{}
+		}
 		release.Labels["giantswarm.io/testing"] = "true"
 	}
 
 	// Create the Release CR
+	r.logger.LogCtx(context.Background(), "message", "creating release CR")
 	_, err = k8sClient.G8sClient().ReleaseV1alpha1().Releases().Create(context.Background(), &release, v1.CreateOptions{})
 	if err != nil {
 		return microerror.Mask(err)
 	}
+	r.logger.LogCtx(context.Background(), "message", "created release CR")
 
 	// Wait for the created release to be ready
+	r.logger.LogCtx(context.Background(), "message", "waiting for release to be ready")
 	{
 		o := func() error {
-			r, err := k8sClient.G8sClient().ReleaseV1alpha1().Releases().Get(context.Background(), release.Name, v1.GetOptions{})
+			toCheck, err := k8sClient.G8sClient().ReleaseV1alpha1().Releases().Get(context.Background(), release.Name, v1.GetOptions{})
 			if err != nil {
 				return backoff.Permanent(err)
 			}
-			if !r.Status.Ready {
+			if !toCheck.Status.Ready {
+				r.logger.LogCtx(context.Background(), "message", "release is not ready yet")
 				return errors.New("not ready")
 			}
 
@@ -220,33 +234,105 @@ func (r *runner) run(ctx context.Context, cmd *cobra.Command, args []string) err
 			return microerror.Mask(err)
 		}
 	}
+	r.logger.LogCtx(context.Background(), "message", "release is ready")
 
 	// Create the cluster under test
+	r.logger.LogCtx(context.Background(), "message", "creating cluster using target release")
 	clusterID, err := gsClient.CreateCluster(context.Background(), releaseVersion, provider)
 	if err != nil {
 		return microerror.Mask(err)
 	}
+	r.logger.LogCtx(context.Background(), "message", "created cluster")
 
-	// TODO: Wait + backoff instead of just sleeping
-	// PKI backend needs some time after cluster creation
-	time.Sleep(5 * time.Second)
+	var kubeconfig string
+	r.logger.LogCtx(context.Background(), "message", "creating kubeconfig for cluster")
+	{
+		o := func() error {
+			// Create a keypair for the new tenant cluster
+			kubeconfig, err = gsClient.GetKubeconfig(context.Background(), clusterID)
+			if err != nil {
+				// TODO: check to see if it's a permanent error or the kubeconfig just isn't ready yet
+				return microerror.Mask(err)
+			}
+			return nil
+		}
 
-	// Create a keypair for the new tenant cluster
-	kubeconfig, err := gsClient.GetKubeconfig(context.Background(), clusterID)
-	if err != nil {
-		return microerror.Mask(err)
+		b := backoff.NewMaxRetries(10, 20*time.Second)
+
+		err = backoff.Retry(o, b)
+		if err != nil {
+			return microerror.Mask(err)
+		}
 	}
+	r.logger.LogCtx(context.Background(), "message", fmt.Sprintf("created kubeconfig with length %d", len(kubeconfig)))
 
-	// TODO: Store me somewhere
-	fmt.Println(len(kubeconfig))
+	r.logger.LogCtx(context.Background(), "message", "setup complete")
+	// Run test here
+	r.logger.LogCtx(context.Background(), "message", "beginning teardown")
 
-	// Clean up
+	r.logger.LogCtx(context.Background(), "message", "deleting cluster")
 	err = gsClient.DeleteCluster(context.Background(), clusterID)
 	if err != nil {
 		return microerror.Mask(err)
 	}
 
-	// TODO: Delete release
+	// Wait for the cluster to be deleted
+	{
+		o := func() error {
+			clusters, err := gsClient.ListClusters(context.Background())
+			if err != nil {
+				return backoff.Permanent(err)
+			}
+			for _, cluster := range clusters {
+				if cluster.ID == clusterID {
+					r.logger.LogCtx(context.Background(), "message", "waiting for deletion")
+					return errors.New("waiting for deletion")
+				}
+			}
+			return nil
+		}
+
+		b := backoff.NewMaxRetries(10, 20*time.Second)
+
+		err = backoff.Retry(o, b)
+		if err != nil {
+			return microerror.Mask(err)
+		}
+	}
+	r.logger.LogCtx(context.Background(), "message", "deleted cluster")
+
+	// Delete the Release CR
+	r.logger.LogCtx(context.Background(), "message", "deleting release CR")
+	backgroundDeletion := v1.DeletionPropagation("Background")
+	err = k8sClient.G8sClient().ReleaseV1alpha1().Releases().Delete(context.Background(), release.Name, v1.DeleteOptions{
+		PropagationPolicy: &backgroundDeletion,
+	})
+	if err != nil {
+		return microerror.Mask(err)
+	}
+
+	// Wait for the release to be deleted
+	{
+		o := func() error {
+			_, err := k8sClient.G8sClient().ReleaseV1alpha1().Releases().Get(context.Background(), release.Name, v1.GetOptions{})
+			if errors2.IsNotFound(err) {
+				return nil
+			} else if err != nil {
+				return backoff.Permanent(err)
+			}
+			r.logger.LogCtx(context.Background(), "message", "waiting for deletion")
+			return errors.New("waiting for deletion")
+		}
+
+		b := backoff.NewMaxRetries(10, 20*time.Second)
+
+		err = backoff.Retry(o, b)
+		if err != nil {
+			return microerror.Mask(err)
+		}
+	}
+	r.logger.LogCtx(context.Background(), "message", "deleted release CR")
+	r.logger.LogCtx(context.Background(), "message", "teardown complete")
 
 	return nil
 }
