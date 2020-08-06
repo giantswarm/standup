@@ -51,7 +51,7 @@ type DeletionResponse struct {
 }
 
 type KubeconfigResponse struct {
-	Kubeconfig string `json:""kubeconfig`
+	Kubeconfig string `json:"kubeconfig"`
 	Result     string `json:"result"`
 }
 
