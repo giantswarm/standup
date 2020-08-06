@@ -55,7 +55,6 @@ func (r *runner) run(ctx context.Context, cmd *cobra.Command, args []string) err
 		}
 	}
 
-	// TODO: Will be used for cleaning up Release from CP
 	// Create REST config for the control plane
 	var restConfig *rest.Config
 	if r.flag.InCluster {
