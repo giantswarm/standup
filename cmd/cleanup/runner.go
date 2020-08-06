@@ -2,11 +2,15 @@ package cleanup
 
 import (
 	"context"
+	"fmt"
 	"io"
 
+	"github.com/giantswarm/k8sclient/v3/pkg/k8sclient"
 	"github.com/giantswarm/microerror"
 	"github.com/giantswarm/micrologger"
 	"github.com/spf13/cobra"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/rest"
 
 	"github.com/giantswarm/standup/pkg/gsclient"
 )
@@ -54,27 +58,40 @@ func (r *runner) run(ctx context.Context, cmd *cobra.Command, args []string) err
 
 	// TODO: Will be used for cleaning up Release from CP
 	// Create REST config for the control plane
-	// var restConfig *rest.Config
-	// if r.flag.InCluster {
-	// 	var err error
-	// 	restConfig, err = rest.InClusterConfig()
-	// 	if err != nil {
-	// 		return microerror.Mask(err)
-	// 	}
-	// }
+	var restConfig *rest.Config
+	if r.flag.InCluster {
+		var err error
+		restConfig, err = rest.InClusterConfig()
+		if err != nil {
+			return microerror.Mask(err)
+		}
+	}
 
 	// Create clients for the control plane
-	// k8sClient, err := k8sclient.NewClients(k8sclient.ClientsConfig{
-	// 	Logger:         r.logger,
-	// 	KubeConfigPath: r.flag.Kubeconfig,
-	// 	RestConfig:     restConfig,
-	// })
-	// if err != nil {
-	// 	return microerror.Mask(err)
-	// }
+	k8sClient, err := k8sclient.NewClients(k8sclient.ClientsConfig{
+		Logger:         r.logger,
+		KubeConfigPath: r.flag.Kubeconfig,
+		RestConfig:     restConfig,
+	})
+	if err != nil {
+		return microerror.Mask(err)
+	}
 
 	// Clean up
-	err := gsClient.DeleteCluster(context.Background(), r.flag.ClusterID)
+
+	// Get release version of tenant cluster
+	releaseVersion, err := gsClient.GetClusterReleaseVersion(context.Background(), r.flag.ClusterID)
+	fmt.Println(releaseVersion)
+	// TODO: Move me after cluster deletion
+
+	// _, err = k8sClient.G8sClient().ReleaseV1alpha1().Releases().Create(context.Background(), &release, v1.CreateOptions{})
+	err = k8sClient.G8sClient().ReleaseV1alpha1().Releases().Delete(context.Background(), releaseVersion, v1.DeleteOptions{})
+	if err != nil {
+		return microerror.Mask(err)
+	}
+
+	// Delete tenant cluster
+	err = gsClient.DeleteCluster(context.Background(), r.flag.ClusterID)
 	if err != nil {
 		return microerror.Mask(err)
 	}

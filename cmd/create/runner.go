@@ -106,7 +106,7 @@ func (r *runner) run(ctx context.Context, cmd *cobra.Command, args []string) err
 	// TODO: wait for the release to be ready
 
 	// Create the cluster under test
-	clusterID, err := gsClient.CreateCluster(context.Background(), r.flag.Release, r.flag.Provider)
+	clusterID, err := gsClient.CreateCluster(context.Background(), r.flag.Release)
 	if err != nil {
 		return microerror.Mask(err)
 	}

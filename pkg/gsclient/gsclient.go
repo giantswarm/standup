@@ -43,6 +43,27 @@ type KubeconfigResponse struct {
 	Result     string `json:"result"`
 }
 
+type ClusterEntry struct {
+	ID             string `json:"id"`
+	ReleaseVersion string `json:"release_version"`
+	// 	[
+	//   {
+	//     "create_date": "2020-08-06T16:23:47Z",
+	//     "id": "4jak7",
+	//     "labels": {
+	//       "cluster-operator.giantswarm.io/version": "2.3.2",
+	//       "giantswarm.io/cluster": "4jak7",
+	//       "giantswarm.io/organization": "conformance-testing",
+	//       "release.giantswarm.io/version": "12.1.0-1596731026"
+	//     },
+	//     "name": "Unnamed cluster",
+	//     "owner": "conformance-testing",
+	//     "path": "/v5/clusters/4jak7/",
+	//     "release_version": "12.1.0-1596731026"
+	//   }
+	// ]
+}
+
 const (
 	CreationResultCreated          = "created"
 	CreationResultCreatedWithError = "created-with-errors"
@@ -118,7 +139,7 @@ func (c *Client) runWithGsctl(args string) (bytes.Buffer, bytes.Buffer, error) {
 	return stdout, stderr, nil
 }
 
-func (c *Client) CreateCluster(ctx context.Context, releaseVersion string, provider string) (string, error) {
+func (c *Client) CreateCluster(ctx context.Context, releaseVersion string) (string, error) {
 
 	// TODO: extract and structure all these hardcoded values
 	output, stderr, err := c.runWithGsctl("--output=json create cluster --owner conformance-testing")
@@ -196,4 +217,32 @@ func (c *Client) GetKubeconfig(ctx context.Context, clusterID string) (string, e
 	}
 
 	return response.Kubeconfig, nil
+}
+
+func (c *Client) GetClusterReleaseVersion(ctx context.Context, clusterID string) (string, error) {
+
+	// TODO: extract and structure all these hardcoded values
+	output, stderr, err := c.runWithGsctl("--output=json list clusters")
+	// TODO: Handle stderr somehow
+	if stderr.Len() > 0 {
+		fmt.Println(stderr)
+	}
+	if err != nil {
+		return "", microerror.Mask(err)
+	}
+
+	var response []ClusterEntry
+	err = json.Unmarshal(output.Bytes(), &response)
+	if err != nil {
+		return "", microerror.Mask(err)
+	}
+
+	for _, cluster := range response {
+		if cluster.ID == clusterID {
+			// Have to add back the leading v in the release name
+			return fmt.Sprintf("v%s", cluster.ReleaseVersion), nil
+		}
+	}
+
+	return "", microerror.Maskf(clusterNotFoundError, stderr.String())
 }
