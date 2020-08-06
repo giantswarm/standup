@@ -79,6 +79,9 @@ func (r *runner) run(ctx context.Context, cmd *cobra.Command, args []string) err
 
 	// Get release version of tenant cluster
 	releaseVersion, err := gsClient.GetClusterReleaseVersion(context.Background(), r.flag.ClusterID)
+	if err != nil {
+		return microerror.Mask(err)
+	}
 
 	// Delete tenant cluster
 	err = gsClient.DeleteCluster(context.Background(), r.flag.ClusterID)
