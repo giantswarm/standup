@@ -1,9 +1,6 @@
 package test
 
 import (
-	"fmt"
-	"strings"
-
 	"github.com/giantswarm/microerror"
 	"github.com/spf13/cobra"
 
@@ -40,12 +37,6 @@ func (f *flag) Init(cmd *cobra.Command) {
 func (f *flag) Validate() error {
 	if f.Kubeconfig == "" && !f.InCluster || f.Kubeconfig != "" && f.InCluster {
 		return microerror.Maskf(invalidFlagError, "--%s and --%s are mutually exclusive", flagKubeconfig, flagInCluster)
-	}
-	if !gsclient.IsValidProvider(f.Provider) {
-		return microerror.Maskf(invalidFlagError, "--%s must be one of <%s>", flagProvider, strings.Join(gsclient.AllProviders(), "|"))
-	}
-	if !gsclient.IsValidRelease(f.Release) {
-		return microerror.Maskf(invalidFlagError, "--%s must be a valid semantic version", flagRelease)
 	}
 
 	return nil
