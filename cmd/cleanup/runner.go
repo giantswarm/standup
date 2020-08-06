@@ -2,7 +2,6 @@ package cleanup
 
 import (
 	"context"
-	"fmt"
 	"io"
 
 	"github.com/giantswarm/k8sclient/v3/pkg/k8sclient"
@@ -81,14 +80,6 @@ func (r *runner) run(ctx context.Context, cmd *cobra.Command, args []string) err
 
 	// Get release version of tenant cluster
 	releaseVersion, err := gsClient.GetClusterReleaseVersion(context.Background(), r.flag.ClusterID)
-	fmt.Println(releaseVersion)
-	// TODO: Move me after cluster deletion
-
-	// _, err = k8sClient.G8sClient().ReleaseV1alpha1().Releases().Create(context.Background(), &release, v1.CreateOptions{})
-	err = k8sClient.G8sClient().ReleaseV1alpha1().Releases().Delete(context.Background(), releaseVersion, v1.DeleteOptions{})
-	if err != nil {
-		return microerror.Mask(err)
-	}
 
 	// Delete tenant cluster
 	err = gsClient.DeleteCluster(context.Background(), r.flag.ClusterID)
@@ -96,7 +87,13 @@ func (r *runner) run(ctx context.Context, cmd *cobra.Command, args []string) err
 		return microerror.Mask(err)
 	}
 
-	// TODO: Delete release - need to pass or "remember" the random name
+	// Delete the release if we know which one to delete
+	if releaseVersion != "" {
+		err = k8sClient.G8sClient().ReleaseV1alpha1().Releases().Delete(context.Background(), releaseVersion, v1.DeleteOptions{})
+		if err != nil {
+			return microerror.Mask(err)
+		}
+	}
 
 	return nil
 }
