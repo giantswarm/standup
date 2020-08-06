@@ -3,21 +3,14 @@ package gsclient
 import (
 	"bytes"
 	"context"
-	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"net/http"
-	"net/url"
 	"os/exec"
 	"strings"
 
 	"github.com/Masterminds/semver/v3"
-	gsclient "github.com/giantswarm/gsclientgen/v2/client"
 	"github.com/giantswarm/microerror"
 	"github.com/giantswarm/micrologger"
-	"github.com/go-openapi/runtime"
-	httptransport "github.com/go-openapi/runtime/client"
-	"github.com/go-openapi/strfmt"
 )
 
 type Config struct {
@@ -30,12 +23,9 @@ type Config struct {
 }
 
 type Client struct {
-	authWriter runtime.ClientAuthInfoWriter
-	email      string
-	endpoint   string
-	password   string
-
-	client *gsclient.Gsclientgen
+	email    string
+	endpoint string
+	password string
 }
 
 // TODO: Use the gsctl type directly
@@ -100,30 +90,22 @@ func New(config Config) (*Client, error) {
 		return nil, microerror.Maskf(invalidConfigError, "%T.Endpoint must not be empty", config)
 	}
 
-	u, err := url.Parse(config.Endpoint)
-	if err != nil {
-		return nil, microerror.Maskf(invalidConfigError, "API endpoint URL %s could not be parsed", config.Endpoint)
-	}
-
-	tlsConfig := &tls.Config{}
-	transport := httptransport.New(u.Host, "", []string{u.Scheme})
-	transport.Transport = &http.Transport{
-		Proxy:           http.ProxyFromEnvironment,
-		TLSClientConfig: tlsConfig,
-	}
-	gsClient := gsclient.New(transport, strfmt.Default)
+	// u, err := url.Parse(config.Endpoint)
+	// if err != nil {
+	// 	return nil, microerror.Maskf(invalidConfigError, "API endpoint URL %s could not be parsed", config.Endpoint)
+	// }
 
 	client := Client{
 		endpoint: config.Endpoint,
 		email:    config.Email,
 		password: config.Password,
-		client:   gsClient,
 	}
 
 	return &client, nil
 }
 
 func runWithGsctl(args string) (bytes.Buffer, bytes.Buffer, error) {
+	// TODO: Include additional params to gsctl : endpoint, email, password
 	argsArr := strings.Fields(args)
 
 	var stdout bytes.Buffer
