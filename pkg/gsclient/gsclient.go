@@ -17,19 +17,13 @@ type Config struct {
 	Logger micrologger.Logger
 
 	// Installations configuration
-	// Email    string
 	Endpoint string
-	// Password string
-	Token string
+	Token    string
 }
 
 type Client struct {
-	// 	email    string
 	endpoint string
-	// password string
-	token string
-
-	// client *gsclient.Gsclientgen
+	token    string
 }
 
 // TODO: Use the gsctl type directly
@@ -82,14 +76,6 @@ func New(config Config) (*Client, error) {
 		return nil, microerror.Maskf(invalidConfigError, "%T.Logger must not be empty", config)
 	}
 
-	// if config.Email == "" {
-	// 	return nil, microerror.Maskf(invalidConfigError, "%T.Email must not be empty", config)
-	// }
-
-	// if config.Password == "" {
-	// 	return nil, microerror.Maskf(invalidConfigError, "%T.Password must not be empty", config)
-	// }
-
 	if config.Token == "" {
 		return nil, microerror.Maskf(invalidConfigError, "%T.Token must not be empty", config)
 	}
@@ -98,25 +84,9 @@ func New(config Config) (*Client, error) {
 		return nil, microerror.Maskf(invalidConfigError, "%T.Endpoint must not be empty", config)
 	}
 
-	// u, err := url.Parse(config.Endpoint)
-	// if err != nil {
-	// 	return nil, microerror.Maskf(invalidConfigError, "API endpoint URL %s could not be parsed", config.Endpoint)
-	// }
-
-	// tlsConfig := &tls.Config{}
-	// transport := httptransport.New(u.Host, "", []string{u.Scheme})
-	// transport.Transport = &http.Transport{
-	// 	Proxy:           http.ProxyFromEnvironment,
-	// 	TLSClientConfig: tlsConfig,
-	// }
-	// gsClient := gsclient.New(transport, strfmt.Default)
-
 	client := Client{
 		endpoint: config.Endpoint,
-		// email:    config.Email,
-		// password: config.Password,
-		// client:   gsClient,
-		token: config.Token,
+		token:    config.Token,
 	}
 
 	return &client, nil
