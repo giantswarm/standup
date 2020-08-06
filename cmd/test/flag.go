@@ -12,32 +12,29 @@ import (
 
 const (
 	flagKubeconfig = "kubeconfig"
-	flagEmail      = "email"
 	flagEndpoint   = "endpoint"
 	flagInCluster  = "in-cluster"
-	flagPassword   = "password"
 	flagProvider   = "provider"
 	flagRelease    = "release"
+	flagToken      = "token"
 )
 
 type flag struct {
 	Kubeconfig string
-	Email      string
 	Endpoint   string
 	InCluster  bool
-	Password   string
 	Provider   string
 	Release    string
+	Token      string
 }
 
 func (f *flag) Init(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&f.Kubeconfig, flagKubeconfig, "k", "", `The path to the kubeconfig for the control plane.`)
-	cmd.Flags().StringVarP(&f.Email, flagEmail, "e", "", `The email of the user account used to authenticate with the GS API.`)
 	cmd.Flags().StringVarP(&f.Endpoint, flagEndpoint, "n", "", `The endpoint of the target control plane's API.`)
 	cmd.Flags().BoolVarP(&f.InCluster, flagInCluster, "i", false, `True if this program is running in a Kubernetes cluster and should communicate with the API via the injected service account token.`)
-	cmd.Flags().StringVarP(&f.Password, flagPassword, "w", "", `The password of the user account used to authenticate with the GS API.`)
 	cmd.Flags().StringVarP(&f.Provider, flagProvider, "p", "", fmt.Sprintf(`The provider of the target release. Possible values: <%s>`, strings.Join(gsclient.AllProviders(), "|")))
 	cmd.Flags().StringVarP(&f.Release, flagRelease, "r", "", fmt.Sprintf(`The semantic version of the release to be tested.`))
+	cmd.Flags().StringVarP(&f.Token, flagToken, "t", "", `The token used to authenticate with the GS API.`)
 }
 
 func (f *flag) Validate() error {
