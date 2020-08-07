@@ -2,13 +2,18 @@ package create
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
+	"os/exec"
+	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/giantswarm/apiextensions/pkg/apis/release/v1alpha1"
+	"github.com/giantswarm/backoff"
 	"github.com/giantswarm/k8sclient/v3/pkg/k8sclient"
 	"github.com/giantswarm/microerror"
 	"github.com/giantswarm/micrologger"
@@ -41,6 +46,79 @@ func (r *runner) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	return nil
+}
+
+func runGit(args []string, dir string) (string, error) {
+	cmd := exec.Command("git", args...)
+	cmd.Dir = dir
+	output, err := cmd.Output()
+	if err != nil {
+		return "", microerror.Mask(err)
+	}
+	return string(output), nil
+}
+
+// Tekton checks out the current commit in detached HEAD state with --depth=1.
+// This means we need to fetch origin/master before we can determine the changed files.
+func fetchAndDiff(dir string) (string, error) {
+	{
+		// Fetch master so we can diff against it
+		argsArr := []string{
+			"fetch",
+			"origin",
+			"master",
+		}
+		_, err := runGit(argsArr, dir)
+		if err != nil {
+			return "", microerror.Mask(err)
+		}
+	}
+
+	var diff string
+	{
+		// Determine the files added in this branch not in master
+		argsArr := []string{
+			"diff",
+			"--name-status",   // only show filename and the type of change (A=added, etc.)
+			"origin/master",   // diff against the latest master
+			"--diff-filter=A", // only show added files
+			"HEAD",            // base ref for the diff
+		}
+		var err error
+		diff, err = runGit(argsArr, dir)
+		if err != nil {
+			return "", microerror.Mask(err)
+		}
+	}
+
+	return diff, nil
+}
+
+func findNewRelease(diff string) (releasePath string, provider string, err error) {
+	{
+		lines := strings.Split(diff, "\n")
+		for _, line := range lines {
+			if strings.HasSuffix(line, "/release.yaml") {
+				fields := strings.Fields(line)
+				if len(fields) < 2 {
+					err = fmt.Errorf("incorrectly formatted diff: should look like 'A       aws/v13.0.0/release.yaml', found %s", line)
+					return
+				}
+				releasePath = fields[1]
+				break
+			}
+		}
+	}
+
+	if releasePath == "" {
+		err = errors.New("no new release found in this branch")
+		return
+	}
+
+	components := strings.Split(releasePath, "/")
+	provider = components[0]
+
+	return
 }
 
 func (r *runner) run(ctx context.Context, cmd *cobra.Command, args []string) error {
@@ -81,48 +159,124 @@ func (r *runner) run(ctx context.Context, cmd *cobra.Command, args []string) err
 		return microerror.Mask(err)
 	}
 
-	// Read the Release CR from the filesystem
 	var release v1alpha1.Release
-	releaseYAML, err := ioutil.ReadFile("releases/" + r.flag.Provider + "/v" + r.flag.Release + "/release.yaml")
-	if err != nil {
-		return microerror.Mask(err)
-	}
+	var provider string
+	var releaseVersion string
+	r.logger.LogCtx(context.Background(), "message", "determining release to test")
+	{
+		var releasePath string
+		{
+			if r.flag.Release != "" {
+				// Read the Release CR with the given version from the filesystem
+				releasePath = filepath.Join(r.flag.Releases, r.flag.Provider, "/v"+r.flag.Release, "/release.yaml")
+				provider = r.flag.Provider
+			} else {
+				// Use "git diff" to find the release under test
+				diff, err := fetchAndDiff(r.flag.Releases)
+				if err != nil {
+					return microerror.Mask(err)
+				}
 
-	// Unmarshal the release
-	err = yaml.Unmarshal(releaseYAML, &release)
-	if err != nil {
-		return microerror.Mask(err)
-	}
+				// Parse the git diff to get the release file, version, and provider
+				releasePath, provider, err = findNewRelease(diff)
+				if err != nil {
+					return microerror.Mask(err)
+				}
+				releasePath = filepath.Join(r.flag.Releases, releasePath)
+			}
+		}
 
-	// Randomize the name
-	release.Name = release.Name + "-" + strconv.Itoa(int(time.Now().Unix()))
+		r.logger.LogCtx(context.Background(), "message", "determined target release to test is "+releasePath)
+
+		releaseYAML, err := ioutil.ReadFile(releasePath)
+		if err != nil {
+			return microerror.Mask(err)
+		}
+
+		err = yaml.Unmarshal(releaseYAML, &release)
+		if err != nil {
+			return microerror.Mask(err)
+		}
+
+		// Randomize the name to avoid duplicate names
+		originalName := release.Name
+		release.Name = release.Name + "-" + strconv.Itoa(int(time.Now().Unix()))
+		releaseVersion = strings.TrimPrefix(release.Name, "v")
+		r.logger.LogCtx(context.Background(), "message", fmt.Sprintf("testing release %s for %s as %s", strings.TrimPrefix(originalName, "v"), provider, releaseVersion))
+
+		// Label for future garbage collection
+		if release.Labels == nil {
+			release.Labels = map[string]string{}
+		}
+		release.Labels["giantswarm.io/testing"] = "true"
+	}
 
 	// Create the Release CR
+	r.logger.LogCtx(context.Background(), "message", "creating release CR")
 	_, err = k8sClient.G8sClient().ReleaseV1alpha1().Releases().Create(context.Background(), &release, v1.CreateOptions{})
 	if err != nil {
 		return microerror.Mask(err)
 	}
+	r.logger.LogCtx(context.Background(), "message", "created release CR")
 
-	// TODO: wait for the release to be ready
+	// Wait for the created release to be ready
+	r.logger.LogCtx(context.Background(), "message", "waiting for release to be ready")
+	{
+		o := func() error {
+			toCheck, err := k8sClient.G8sClient().ReleaseV1alpha1().Releases().Get(context.Background(), release.Name, v1.GetOptions{})
+			if err != nil {
+				return backoff.Permanent(err)
+			}
+			if !toCheck.Status.Ready {
+				r.logger.LogCtx(context.Background(), "message", "release is not ready yet")
+				return errors.New("not ready")
+			}
+
+			return nil
+		}
+
+		b := backoff.NewMaxRetries(10, 20*time.Second)
+
+		err = backoff.Retry(o, b)
+		if err != nil {
+			return microerror.Mask(err)
+		}
+	}
+	r.logger.LogCtx(context.Background(), "message", "release is ready")
 
 	// Create the cluster under test
-	clusterID, err := gsClient.CreateCluster(context.Background(), r.flag.Release)
+	r.logger.LogCtx(context.Background(), "message", "creating cluster using target release")
+	clusterID, err := gsClient.CreateCluster(context.Background(), releaseVersion)
 	if err != nil {
 		return microerror.Mask(err)
 	}
+	r.logger.LogCtx(context.Background(), "message", fmt.Sprintf("created cluster %s", clusterID))
 
-	// TODO: Wait + backoff instead of just sleeping
-	// PKI backend needs some time after cluster creation
-	time.Sleep(5 * time.Second)
+	var kubeconfig string
+	r.logger.LogCtx(context.Background(), "message", "creating kubeconfig for cluster")
+	{
+		o := func() error {
+			// Create a keypair for the new tenant cluster
+			kubeconfig, err = gsClient.GetKubeconfig(context.Background(), clusterID)
+			if err != nil {
+				// TODO: check to see if it's a permanent error or the kubeconfig just isn't ready yet
+				return microerror.Mask(err)
+			}
+			return nil
+		}
 
-	// Create a keypair for the new tenant cluster
-	kubeconfig, err := gsClient.GetKubeconfig(context.Background(), clusterID)
-	if err != nil {
-		return microerror.Mask(err)
+		b := backoff.NewMaxRetries(10, 20*time.Second)
+
+		err = backoff.Retry(o, b)
+		if err != nil {
+			return microerror.Mask(err)
+		}
 	}
+	r.logger.LogCtx(context.Background(), "message", fmt.Sprintf("created kubeconfig with length %d", len(kubeconfig)))
 
-	// TODO: Store me somewhere
-	fmt.Println(len(kubeconfig))
+	r.logger.LogCtx(context.Background(), "message", "setup complete")
+
+	// TODO: Store kubeconfig somewhere
 
 	return nil
 }

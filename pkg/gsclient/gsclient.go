@@ -8,7 +8,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/Masterminds/semver/v3"
+	semver "github.com/Masterminds/semver/v3"
 	"github.com/giantswarm/microerror"
 	"github.com/giantswarm/micrologger"
 )
@@ -60,15 +60,6 @@ var providers = []string{
 
 func AllProviders() []string {
 	return providers
-}
-
-func IsValidProvider(candidate string) bool {
-	for _, provider := range providers {
-		if candidate == provider {
-			return true
-		}
-	}
-	return false
 }
 
 func IsValidRelease(candidate string) bool {
@@ -126,13 +117,13 @@ func (c *Client) runWithGsctl(args string) (bytes.Buffer, bytes.Buffer, error) {
 func (c *Client) CreateCluster(ctx context.Context, releaseVersion string) (string, error) {
 
 	// TODO: extract and structure all these hardcoded values
-	output, stderr, err := c.runWithGsctl("--output=json create cluster --owner conformance-testing")
+	output, stderr, err := c.runWithGsctl("--output=json create cluster --owner conformance-testing --name " + releaseVersion + " --release " + releaseVersion)
+	if err != nil {
+		return "", microerror.Mask(err)
+	}
 	// TODO: Handle stderr somehow
 	if stderr.Len() > 0 {
 		fmt.Println(stderr)
-	}
-	if err != nil {
-		return "", microerror.Mask(err)
 	}
 
 	var response CreationResponse
@@ -177,12 +168,7 @@ func (c *Client) GetKubeconfig(ctx context.Context, clusterID string) (string, e
 
 	// TODO: extract and structure all these hardcoded values
 	args := fmt.Sprintf("--output=json create kubeconfig --cluster=%s --certificate-organizations system:masters", clusterID)
-	output, stderr, err := c.runWithGsctl(args)
-	// TODO: Handle stderr somehow
-	if stderr.Len() > 0 {
-		fmt.Println(output)
-		fmt.Println(stderr)
-	}
+	output, _, err := c.runWithGsctl(args)
 	if err != nil {
 		return "", microerror.Mask(err)
 	}
@@ -197,26 +183,31 @@ func (c *Client) GetKubeconfig(ctx context.Context, clusterID string) (string, e
 	if response.Result != "ok" {
 		fmt.Println("something went wrong creating kubeconfig")
 		fmt.Println(output)
-		fmt.Println(stderr)
 	}
 
 	return response.Kubeconfig, nil
 }
 
-func (c *Client) GetClusterReleaseVersion(ctx context.Context, clusterID string) (string, error) {
-
+func (c *Client) ListClusters(ctx context.Context) ([]ClusterEntry, error) {
 	// TODO: extract and structure all these hardcoded values
-	output, stderr, err := c.runWithGsctl("--output=json list clusters")
-	// TODO: Handle stderr somehow
-	if stderr.Len() > 0 {
-		fmt.Println(stderr)
-	}
+	args := "--output=json list clusters --show-deleting"
+	output, _, err := c.runWithGsctl(args)
 	if err != nil {
-		return "", microerror.Mask(err)
+		return nil, microerror.Mask(err)
 	}
 
 	var response []ClusterEntry
 	err = json.Unmarshal(output.Bytes(), &response)
+	if err != nil {
+		return nil, microerror.Mask(err)
+	}
+
+	return response, nil
+}
+
+func (c *Client) GetClusterReleaseVersion(ctx context.Context, clusterID string) (string, error) {
+
+	response, err := c.ListClusters(ctx)
 	if err != nil {
 		return "", microerror.Mask(err)
 	}
@@ -228,5 +219,5 @@ func (c *Client) GetClusterReleaseVersion(ctx context.Context, clusterID string)
 		}
 	}
 
-	return "", microerror.Maskf(clusterNotFoundError, stderr.String())
+	return "", microerror.Maskf(clusterNotFoundError, fmt.Sprintf("cluster %s was not found", clusterID))
 }

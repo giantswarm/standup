@@ -2,12 +2,16 @@ package cleanup
 
 import (
 	"context"
+	"errors"
 	"io"
+	"time"
 
+	"github.com/giantswarm/backoff"
 	"github.com/giantswarm/k8sclient/v3/pkg/k8sclient"
 	"github.com/giantswarm/microerror"
 	"github.com/giantswarm/micrologger"
 	"github.com/spf13/cobra"
+	errors2 "k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/rest"
 
@@ -83,19 +87,71 @@ func (r *runner) run(ctx context.Context, cmd *cobra.Command, args []string) err
 		return microerror.Mask(err)
 	}
 
-	// Delete tenant cluster
+	r.logger.LogCtx(context.Background(), "message", "beginning teardown")
+
+	r.logger.LogCtx(context.Background(), "message", "deleting cluster")
 	err = gsClient.DeleteCluster(context.Background(), r.flag.ClusterID)
 	if err != nil {
 		return microerror.Mask(err)
 	}
 
-	// Delete the release if we know which one to delete
-	if releaseVersion != "" {
-		err = k8sClient.G8sClient().ReleaseV1alpha1().Releases().Delete(context.Background(), releaseVersion, v1.DeleteOptions{})
+	// Wait for the cluster to be deleted
+	{
+		o := func() error {
+			clusters, err := gsClient.ListClusters(context.Background())
+			if err != nil {
+				return backoff.Permanent(err)
+			}
+			for _, cluster := range clusters {
+				if cluster.ID == r.flag.ClusterID {
+					r.logger.LogCtx(context.Background(), "message", "waiting for cluster deletion")
+					return errors.New("waiting for cluster deletion")
+				}
+			}
+			return nil
+		}
+
+		b := backoff.NewMaxRetries(100, 20*time.Second)
+
+		err = backoff.Retry(o, b)
 		if err != nil {
 			return microerror.Mask(err)
 		}
 	}
+	r.logger.LogCtx(context.Background(), "message", "deleted cluster")
+
+	// Delete the Release CR
+	r.logger.LogCtx(context.Background(), "message", "deleting release CR")
+	backgroundDeletion := v1.DeletionPropagation("Background")
+	err = k8sClient.G8sClient().ReleaseV1alpha1().Releases().Delete(context.Background(), releaseVersion, v1.DeleteOptions{
+		PropagationPolicy: &backgroundDeletion,
+	})
+	if err != nil {
+		return microerror.Mask(err)
+	}
+
+	// Wait for the release to be deleted
+	{
+		o := func() error {
+			_, err := k8sClient.G8sClient().ReleaseV1alpha1().Releases().Get(context.Background(), releaseVersion, v1.GetOptions{})
+			if errors2.IsNotFound(err) {
+				return nil
+			} else if err != nil {
+				return backoff.Permanent(err)
+			}
+			r.logger.LogCtx(context.Background(), "message", "waiting for release deletion")
+			return errors.New("waiting for release deletion")
+		}
+
+		b := backoff.NewMaxRetries(10, 20*time.Second)
+
+		err = backoff.Retry(o, b)
+		if err != nil {
+			return microerror.Mask(err)
+		}
+	}
+	r.logger.LogCtx(context.Background(), "message", "deleted release CR")
+	r.logger.LogCtx(context.Background(), "message", "teardown complete")
 
 	return nil
 }
