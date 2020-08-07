@@ -5,8 +5,9 @@ import (
 	"strings"
 
 	"github.com/giantswarm/microerror"
-	"github.com/giantswarm/standup/pkg/gsclient"
 	"github.com/spf13/cobra"
+
+	"github.com/giantswarm/standup/pkg/gsclient"
 )
 
 const (
