@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/Masterminds/semver"
 	"github.com/giantswarm/microerror"
 	"github.com/giantswarm/micrologger"
 )
@@ -52,6 +53,19 @@ const (
 	CreationResultCreatedWithError = "created-with-errors"
 	DeletionResultScheduled        = "deletion scheduled"
 )
+
+var providers = []string{
+	"aws",
+}
+
+func AllProviders() []string {
+	return providers
+}
+
+func IsValidRelease(candidate string) bool {
+	_, err := semver.NewVersion(candidate)
+	return err == nil
+}
 
 func New(config Config) (*Client, error) {
 	if config.Logger == nil {

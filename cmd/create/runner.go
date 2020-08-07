@@ -164,21 +164,31 @@ func (r *runner) run(ctx context.Context, cmd *cobra.Command, args []string) err
 	var releaseVersion string
 	r.logger.LogCtx(context.Background(), "message", "determining release to test")
 	{
-		// Use "git diff" to find the release under test
-		diff, err := fetchAndDiff(r.flag.Releases)
-		if err != nil {
-			return microerror.Mask(err)
+		var releasePath string
+		{
+			if r.flag.Release != "" {
+				// Read the Release CR with the given version from the filesystem
+				releasePath = filepath.Join(r.flag.Releases, r.flag.Provider, "/v"+r.flag.Release, "/release.yaml")
+				provider = r.flag.Provider
+			} else {
+				// Use "git diff" to find the release under test
+				diff, err := fetchAndDiff(r.flag.Releases)
+				if err != nil {
+					return microerror.Mask(err)
+				}
+
+				// Parse the git diff to get the release file, version, and provider
+				releasePath, provider, err = findNewRelease(diff)
+				if err != nil {
+					return microerror.Mask(err)
+				}
+				releasePath = filepath.Join(r.flag.Releases, releasePath)
+			}
 		}
 
-		// Parse the git diff to get the release file, version, and provider
-		var releasePath string
-		releasePath, provider, err = findNewRelease(diff)
-		if err != nil {
-			return microerror.Mask(err)
-		}
 		r.logger.LogCtx(context.Background(), "message", "determined target release to test is "+releasePath)
 
-		releaseYAML, err := ioutil.ReadFile(filepath.Join(r.flag.Releases, releasePath))
+		releaseYAML, err := ioutil.ReadFile(releasePath)
 		if err != nil {
 			return microerror.Mask(err)
 		}
