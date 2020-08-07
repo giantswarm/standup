@@ -1,21 +1,15 @@
-package test
+package cleanup
 
 import (
 	"context"
-	"fmt"
 	"io"
-	"io/ioutil"
-	"strconv"
-	"time"
 
-	"github.com/giantswarm/apiextensions/pkg/apis/release/v1alpha1"
 	"github.com/giantswarm/k8sclient/v3/pkg/k8sclient"
 	"github.com/giantswarm/microerror"
 	"github.com/giantswarm/micrologger"
 	"github.com/spf13/cobra"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/rest"
-	"sigs.k8s.io/yaml"
 
 	"github.com/giantswarm/standup/pkg/gsclient"
 )
@@ -81,56 +75,27 @@ func (r *runner) run(ctx context.Context, cmd *cobra.Command, args []string) err
 		return microerror.Mask(err)
 	}
 
-	// Read the Release CR from the filesystem
-	var release v1alpha1.Release
-	releaseYAML, err := ioutil.ReadFile("releases/" + r.flag.Provider + "/v" + r.flag.Release + "/release.yaml")
-	if err != nil {
-		return microerror.Mask(err)
-	}
-
-	// Unmarshal the release
-	err = yaml.Unmarshal(releaseYAML, &release)
-	if err != nil {
-		return microerror.Mask(err)
-	}
-
-	// Randomize the name
-	release.Name = release.Name + "-" + strconv.Itoa(int(time.Now().Unix()))
-
-	// Create the Release CR
-	_, err = k8sClient.G8sClient().ReleaseV1alpha1().Releases().Create(context.Background(), &release, v1.CreateOptions{})
-	if err != nil {
-		return microerror.Mask(err)
-	}
-
-	// TODO: wait for the release to be ready
-
-	// Create the cluster under test
-	clusterID, err := gsClient.CreateCluster(context.Background(), r.flag.Release)
-	if err != nil {
-		return microerror.Mask(err)
-	}
-
-	// TODO: Wait + backoff instead of just sleeping
-	// PKI backend needs some time after cluster creation
-	time.Sleep(5 * time.Second)
-
-	// Create a keypair for the new tenant cluster
-	kubeconfig, err := gsClient.GetKubeconfig(context.Background(), clusterID)
-	if err != nil {
-		return microerror.Mask(err)
-	}
-
-	// TODO: Store me somewhere
-	fmt.Println(len(kubeconfig))
-
 	// Clean up
-	err = gsClient.DeleteCluster(context.Background(), clusterID)
+
+	// Get release version of tenant cluster
+	releaseVersion, err := gsClient.GetClusterReleaseVersion(context.Background(), r.flag.ClusterID)
 	if err != nil {
 		return microerror.Mask(err)
 	}
 
-	// TODO: Delete release
+	// Delete tenant cluster
+	err = gsClient.DeleteCluster(context.Background(), r.flag.ClusterID)
+	if err != nil {
+		return microerror.Mask(err)
+	}
+
+	// Delete the release if we know which one to delete
+	if releaseVersion != "" {
+		err = k8sClient.G8sClient().ReleaseV1alpha1().Releases().Delete(context.Background(), releaseVersion, v1.DeleteOptions{})
+		if err != nil {
+			return microerror.Mask(err)
+		}
+	}
 
 	return nil
 }

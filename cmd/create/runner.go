@@ -1,4 +1,4 @@
-package test
+package create
 
 import (
 	"context"
@@ -123,14 +123,6 @@ func (r *runner) run(ctx context.Context, cmd *cobra.Command, args []string) err
 
 	// TODO: Store me somewhere
 	fmt.Println(len(kubeconfig))
-
-	// Clean up
-	err = gsClient.DeleteCluster(context.Background(), clusterID)
-	if err != nil {
-		return microerror.Mask(err)
-	}
-
-	// TODO: Delete release
 
 	return nil
 }
