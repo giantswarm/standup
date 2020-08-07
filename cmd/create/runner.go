@@ -250,7 +250,7 @@ func (r *runner) run(ctx context.Context, cmd *cobra.Command, args []string) err
 	if err != nil {
 		return microerror.Mask(err)
 	}
-	r.logger.LogCtx(context.Background(), "message", "created cluster %s", clusterID)
+	r.logger.LogCtx(context.Background(), "message", fmt.Sprintf("created cluster %s", clusterID))
 
 	var kubeconfig string
 	r.logger.LogCtx(context.Background(), "message", "creating kubeconfig for cluster")

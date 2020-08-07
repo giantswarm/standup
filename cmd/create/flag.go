@@ -44,9 +44,9 @@ func (f *flag) Validate() error {
 	if f.Kubeconfig == "" && !f.InCluster || f.Kubeconfig != "" && f.InCluster {
 		return microerror.Maskf(invalidFlagError, "--%s and --%s are mutually exclusive", flagKubeconfig, flagInCluster)
 	}
-	// if f.Release == "" && f.Releases == "" || f.Release != "" && f.Releases != "" {
-	// 	return microerror.Maskf(invalidFlagError, "must set exactly one of --%s or --%s", flagRelease, flagReleases)
-	// }
+	if f.Releases == "" {
+		return microerror.Maskf(invalidFlagError, "--%s is required", flagReleases)
+	}
 	if f.Release != "" && !gsclient.IsValidRelease(f.Release) {
 		return microerror.Maskf(invalidFlagError, "--%s must be a valid semantic version", flagRelease)
 	}
