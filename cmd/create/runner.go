@@ -250,7 +250,7 @@ func (r *runner) run(ctx context.Context, cmd *cobra.Command, args []string) err
 	if err != nil {
 		return microerror.Mask(err)
 	}
-	r.logger.LogCtx(context.Background(), "message", "created cluster")
+	r.logger.LogCtx(context.Background(), "message", "created cluster %s", clusterID)
 
 	var kubeconfig string
 	r.logger.LogCtx(context.Background(), "message", "creating kubeconfig for cluster")
@@ -276,32 +276,7 @@ func (r *runner) run(ctx context.Context, cmd *cobra.Command, args []string) err
 
 	r.logger.LogCtx(context.Background(), "message", "setup complete")
 
-	// // Create the Release CR
-	// _, err = k8sClient.G8sClient().ReleaseV1alpha1().Releases().Create(context.Background(), &release, v1.CreateOptions{})
-	// if err != nil {
-	// 	return microerror.Mask(err)
-	// }
-
-	// // TODO: wait for the release to be ready
-
-	// // Create the cluster under test
-	// clusterID, err := gsClient.CreateCluster(context.Background(), r.flag.Release)
-	// if err != nil {
-	// 	return microerror.Mask(err)
-	// }
-
-	// // TODO: Wait + backoff instead of just sleeping
-	// // PKI backend needs some time after cluster creation
-	// time.Sleep(5 * time.Second)
-
-	// // Create a keypair for the new tenant cluster
-	// kubeconfig, err := gsClient.GetKubeconfig(context.Background(), clusterID)
-	// if err != nil {
-	// 	return microerror.Mask(err)
-	// }
-
-	// // TODO: Store me somewhere
-	// fmt.Println(len(kubeconfig))
+	// TODO: Store kubeconfig somewhere
 
 	return nil
 }
