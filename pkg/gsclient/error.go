@@ -23,3 +23,12 @@ var clusterDeletionError = &microerror.Error{
 func IsClusterDeletionError(err error) bool {
 	return microerror.Cause(err) == clusterDeletionError
 }
+
+var clusterNotFoundError = &microerror.Error{
+	Kind: "clusterNotFoundError",
+}
+
+// IsClusterNotFoundError asserts clusterNotFoundError.
+func IsClusterNotFoundError(err error) bool {
+	return microerror.Cause(err) == clusterNotFoundError
+}

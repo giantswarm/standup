@@ -8,6 +8,8 @@ import (
 	"github.com/giantswarm/micrologger"
 	"github.com/spf13/cobra"
 
+	"github.com/giantswarm/standup/cmd/cleanup"
+	"github.com/giantswarm/standup/cmd/create"
 	"github.com/giantswarm/standup/cmd/test"
 	"github.com/giantswarm/standup/cmd/version"
 )
@@ -61,6 +63,34 @@ func New(config Config) (*cobra.Command, error) {
 		}
 	}
 
+	var createCmd *cobra.Command
+	{
+		c := create.Config{
+			Logger: config.Logger,
+			Stderr: config.Stderr,
+			Stdout: config.Stdout,
+		}
+
+		createCmd, err = create.New(c)
+		if err != nil {
+			return nil, microerror.Mask(err)
+		}
+	}
+
+	var cleanupCmd *cobra.Command
+	{
+		c := cleanup.Config{
+			Logger: config.Logger,
+			Stderr: config.Stderr,
+			Stdout: config.Stdout,
+		}
+
+		cleanupCmd, err = cleanup.New(c)
+		if err != nil {
+			return nil, microerror.Mask(err)
+		}
+	}
+
 	var versionCmd *cobra.Command
 	{
 		c := version.Config{
@@ -97,6 +127,8 @@ func New(config Config) (*cobra.Command, error) {
 
 	f.Init(c)
 
+	c.AddCommand(createCmd)
+	c.AddCommand(cleanupCmd)
 	c.AddCommand(testCmd)
 	c.AddCommand(versionCmd)
 

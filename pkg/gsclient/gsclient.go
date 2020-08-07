@@ -42,8 +42,9 @@ type KubeconfigResponse struct {
 	Result     string `json:"result"`
 }
 
-type ListResponseItem struct {
-	ID string `json:"id"`
+type ClusterEntry struct {
+	ID             string `json:"id"`
+	ReleaseVersion string `json:"release_version"`
 }
 
 const (
@@ -99,7 +100,7 @@ func (c *Client) runWithGsctl(args string) (bytes.Buffer, bytes.Buffer, error) {
 	return stdout, stderr, nil
 }
 
-func (c *Client) CreateCluster(ctx context.Context, releaseVersion string, provider string) (string, error) {
+func (c *Client) CreateCluster(ctx context.Context, releaseVersion string) (string, error) {
 
 	// TODO: extract and structure all these hardcoded values
 	output, stderr, err := c.runWithGsctl("--output=json create cluster --owner conformance-testing --name " + releaseVersion + " --release " + releaseVersion)
@@ -173,7 +174,7 @@ func (c *Client) GetKubeconfig(ctx context.Context, clusterID string) (string, e
 	return response.Kubeconfig, nil
 }
 
-func (c *Client) ListClusters(ctx context.Context) ([]ListResponseItem, error) {
+func (c *Client) ListClusters(ctx context.Context) ([]ClusterEntry, error) {
 	// TODO: extract and structure all these hardcoded values
 	args := "--output=json list clusters --show-deleting"
 	output, _, err := c.runWithGsctl(args)
@@ -181,11 +182,28 @@ func (c *Client) ListClusters(ctx context.Context) ([]ListResponseItem, error) {
 		return nil, microerror.Mask(err)
 	}
 
-	var response []ListResponseItem
+	var response []ClusterEntry
 	err = json.Unmarshal(output.Bytes(), &response)
 	if err != nil {
 		return nil, microerror.Mask(err)
 	}
 
 	return response, nil
+}
+
+func (c *Client) GetClusterReleaseVersion(ctx context.Context, clusterID string) (string, error) {
+
+	response, err := c.ListClusters(ctx)
+	if err != nil {
+		return "", microerror.Mask(err)
+	}
+
+	for _, cluster := range response {
+		if cluster.ID == clusterID {
+			// Have to add back the leading v in the release name
+			return fmt.Sprintf("v%s", cluster.ReleaseVersion), nil
+		}
+	}
+
+	return "", microerror.Maskf(clusterNotFoundError, fmt.Sprintf("cluster %s was not found", clusterID))
 }

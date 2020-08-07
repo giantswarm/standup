@@ -1,4 +1,4 @@
-package test
+package create
 
 import (
 	"context"
@@ -18,7 +18,6 @@ import (
 	"github.com/giantswarm/microerror"
 	"github.com/giantswarm/micrologger"
 	"github.com/spf13/cobra"
-	errors2 "k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/yaml"
@@ -123,7 +122,6 @@ func findNewRelease(diff string) (releasePath string, provider string, err error
 }
 
 func (r *runner) run(ctx context.Context, cmd *cobra.Command, args []string) error {
-	r.logger.LogCtx(context.Background(), "message", "beginning setup")
 	// Create a GS API client for managing tenant clusters
 	var gsClient *gsclient.Client
 	{
@@ -267,72 +265,33 @@ func (r *runner) run(ctx context.Context, cmd *cobra.Command, args []string) err
 	r.logger.LogCtx(context.Background(), "message", fmt.Sprintf("created kubeconfig with length %d", len(kubeconfig)))
 
 	r.logger.LogCtx(context.Background(), "message", "setup complete")
-	// Run test here
-	r.logger.LogCtx(context.Background(), "message", "beginning teardown")
 
-	r.logger.LogCtx(context.Background(), "message", "deleting cluster")
-	err = gsClient.DeleteCluster(context.Background(), clusterID)
-	if err != nil {
-		return microerror.Mask(err)
-	}
+	// // Create the Release CR
+	// _, err = k8sClient.G8sClient().ReleaseV1alpha1().Releases().Create(context.Background(), &release, v1.CreateOptions{})
+	// if err != nil {
+	// 	return microerror.Mask(err)
+	// }
 
-	// Wait for the cluster to be deleted
-	{
-		o := func() error {
-			clusters, err := gsClient.ListClusters(context.Background())
-			if err != nil {
-				return backoff.Permanent(err)
-			}
-			for _, cluster := range clusters {
-				if cluster.ID == clusterID {
-					r.logger.LogCtx(context.Background(), "message", "waiting for deletion")
-					return errors.New("waiting for deletion")
-				}
-			}
-			return nil
-		}
+	// // TODO: wait for the release to be ready
 
-		b := backoff.NewMaxRetries(10, 20*time.Second)
+	// // Create the cluster under test
+	// clusterID, err := gsClient.CreateCluster(context.Background(), r.flag.Release)
+	// if err != nil {
+	// 	return microerror.Mask(err)
+	// }
 
-		err = backoff.Retry(o, b)
-		if err != nil {
-			return microerror.Mask(err)
-		}
-	}
-	r.logger.LogCtx(context.Background(), "message", "deleted cluster")
+	// // TODO: Wait + backoff instead of just sleeping
+	// // PKI backend needs some time after cluster creation
+	// time.Sleep(5 * time.Second)
 
-	// Delete the Release CR
-	r.logger.LogCtx(context.Background(), "message", "deleting release CR")
-	backgroundDeletion := v1.DeletionPropagation("Background")
-	err = k8sClient.G8sClient().ReleaseV1alpha1().Releases().Delete(context.Background(), release.Name, v1.DeleteOptions{
-		PropagationPolicy: &backgroundDeletion,
-	})
-	if err != nil {
-		return microerror.Mask(err)
-	}
+	// // Create a keypair for the new tenant cluster
+	// kubeconfig, err := gsClient.GetKubeconfig(context.Background(), clusterID)
+	// if err != nil {
+	// 	return microerror.Mask(err)
+	// }
 
-	// Wait for the release to be deleted
-	{
-		o := func() error {
-			_, err := k8sClient.G8sClient().ReleaseV1alpha1().Releases().Get(context.Background(), release.Name, v1.GetOptions{})
-			if errors2.IsNotFound(err) {
-				return nil
-			} else if err != nil {
-				return backoff.Permanent(err)
-			}
-			r.logger.LogCtx(context.Background(), "message", "waiting for deletion")
-			return errors.New("waiting for deletion")
-		}
-
-		b := backoff.NewMaxRetries(10, 20*time.Second)
-
-		err = backoff.Retry(o, b)
-		if err != nil {
-			return microerror.Mask(err)
-		}
-	}
-	r.logger.LogCtx(context.Background(), "message", "deleted release CR")
-	r.logger.LogCtx(context.Background(), "message", "teardown complete")
+	// // TODO: Store me somewhere
+	// fmt.Println(len(kubeconfig))
 
 	return nil
 }
