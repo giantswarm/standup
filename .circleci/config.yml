@@ -24,7 +24,7 @@ workflows:
               only: /^v.*/
 
       - architect/push-to-docker:
-          name: "push-standup-to-quay"
+          name: push-standup-to-quay
           image: "quay.io/giantswarm/standup"
           username_envar: "QUAY_USERNAME"
           password_envar: "QUAY_PASSWORD"
