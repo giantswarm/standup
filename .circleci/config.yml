@@ -14,7 +14,7 @@ workflows:
               only: /^v.*/
 
       - architect/go-build:
-          name: go-build-architect
+          name: go-build-standup
           binary: standup
           requires:
             - go-test
@@ -24,12 +24,12 @@ workflows:
               only: /^v.*/
 
       - architect/push-to-docker:
-          name: "push-architect-to-docker"
-          image: "quay.io/giantswarm/architect"
+          name: "push-standup-to-docker"
+          image: "quay.io/giantswarm/standup"
           username_envar: "QUAY_USERNAME"
           password_envar: "QUAY_PASSWORD"
           requires:
-            - go-build-architect
+            - go-build-standup
           filters:
             # Needed to trigger job also on git tag.
             tags:
