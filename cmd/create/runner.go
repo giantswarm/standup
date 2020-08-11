@@ -278,5 +278,11 @@ func (r *runner) run(ctx context.Context, cmd *cobra.Command, args []string) err
 
 	// TODO: Store kubeconfig somewhere
 
+	// Write to path from flag
+	err = ioutil.WriteFile(r.flag.OutputPath, []byte(kubeconfig), 0644)
+	if err != nil {
+		return microerror.Mask(err)
+	}
+
 	return nil
 }
