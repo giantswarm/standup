@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	defaultKubeconfigPath = "/workspace/output/kubeconfig"
+	defaultKubeconfigPath = "/workspace/cluster/kubeconfig"
 
 	flagKubeconfig = "kubeconfig"
 	flagEndpoint   = "endpoint"
