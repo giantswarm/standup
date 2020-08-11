@@ -12,14 +12,15 @@ import (
 
 const (
 	defaultKubeconfigPath = "/workspace/output/kubeconfig"
-	flagKubeconfig        = "kubeconfig"
-	flagEndpoint          = "endpoint"
-	flagInCluster         = "in-cluster"
-	flagOutput            = "output"
-	flagProvider          = "provider"
-	flagRelease           = "release"
-	flagReleases          = "releases"
-	flagToken             = "token"
+
+	flagKubeconfig = "kubeconfig"
+	flagEndpoint   = "endpoint"
+	flagInCluster  = "in-cluster"
+	flagOutput     = "output"
+	flagProvider   = "provider"
+	flagRelease    = "release"
+	flagReleases   = "releases"
+	flagToken      = "token"
 )
 
 type flag struct {
