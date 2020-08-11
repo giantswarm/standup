@@ -11,14 +11,15 @@ import (
 )
 
 const (
-	flagKubeconfig = "kubeconfig"
-	flagEndpoint   = "endpoint"
-	flagInCluster  = "in-cluster"
-	flagOutput     = "output"
-	flagProvider   = "provider"
-	flagRelease    = "release"
-	flagReleases   = "releases"
-	flagToken      = "token"
+	defaultKubeconfigPath = "/workspace/output/kubeconfig"
+	flagKubeconfig        = "kubeconfig"
+	flagEndpoint          = "endpoint"
+	flagInCluster         = "in-cluster"
+	flagOutput            = "output"
+	flagProvider          = "provider"
+	flagRelease           = "release"
+	flagReleases          = "releases"
+	flagToken             = "token"
 )
 
 type flag struct {
@@ -49,7 +50,7 @@ func (f *flag) Validate() error {
 	}
 	if f.OutputPath == "" {
 		// Set default output path if none is given
-		f.OutputPath = "/workspace/output/kubeconfig"
+		f.OutputPath = defaultKubeconfigPath
 	}
 	if f.Releases == "" {
 		return microerror.Maskf(invalidFlagError, "--%s is required", flagReleases)
