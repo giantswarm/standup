@@ -56,6 +56,10 @@ func (f *flag) Validate() error {
 	if f.Releases == "" {
 		return microerror.Maskf(invalidFlagError, "--%s is required", flagReleases)
 	}
+	if f.Release != "" {
+		// Remove leading v from release version
+		f.Release = strings.TrimPrefix(f.Release, "v")
+	}
 	if f.Release != "" && !gsclient.IsValidRelease(f.Release) {
 		return microerror.Maskf(invalidFlagError, "--%s must be a valid semantic version", flagRelease)
 	}
