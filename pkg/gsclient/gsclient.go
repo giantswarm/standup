@@ -98,8 +98,8 @@ func (c *Client) runWithGsctl(args string) (bytes.Buffer, bytes.Buffer, error) {
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 	gsctlCmd := &exec.Cmd{
-		Path:   "./gsctl", // TODO: don't hardcode this
-		Args:   append([]string{"./gsctl"}, argsArr...),
+		Path:   "gsctl",
+		Args:   append([]string{"gsctl"}, argsArr...),
 		Stderr: &stderr,
 		Stdout: &stdout,
 	}
