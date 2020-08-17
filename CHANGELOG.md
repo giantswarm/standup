@@ -7,4 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added optional flags allowing an OwnerReference to be set on test releases allowing automatic cleanup when ProwJobs 
+  are garbage collected.
+
 [Unreleased]: https://github.com/giantswarm/standup/tree/master

@@ -19,6 +19,7 @@ import (
 	"github.com/giantswarm/micrologger"
 	"github.com/spf13/cobra"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/yaml"
 
@@ -209,6 +210,17 @@ func (r *runner) run(ctx context.Context, cmd *cobra.Command, args []string) err
 			release.Labels = map[string]string{}
 		}
 		release.Labels["giantswarm.io/testing"] = "true"
+
+		if r.flag.OwnerName != "" {
+			blockOwnerDeletion := true
+			release.OwnerReferences = append(release.OwnerReferences, v1.OwnerReference{
+				APIVersion:         "prow.k8s.io/v1",
+				BlockOwnerDeletion: &blockOwnerDeletion,
+				Kind:               "ProwJob",
+				Name:               r.flag.OwnerName,
+				UID:                types.UID(r.flag.OwnerUID),
+			})
+		}
 	}
 
 	// Create the Release CR
