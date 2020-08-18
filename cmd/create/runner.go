@@ -123,7 +123,7 @@ func findNewRelease(diff string) (releasePath string, provider string, err error
 	return
 }
 
-func (r *runner) run(ctx context.Context, cmd *cobra.Command, args []string) error {
+func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 	// Create a GS API client for managing tenant clusters
 	var gsClient *gsclient.Client
 	{
@@ -164,7 +164,7 @@ func (r *runner) run(ctx context.Context, cmd *cobra.Command, args []string) err
 	var release v1alpha1.Release
 	var provider string
 	var releaseVersion string
-	r.logger.LogCtx(context.Background(), "message", "determining release to test")
+	r.logger.LogCtx(ctx, "message", "determining release to test")
 	{
 		var releasePath string
 		{
@@ -188,7 +188,7 @@ func (r *runner) run(ctx context.Context, cmd *cobra.Command, args []string) err
 			}
 		}
 
-		r.logger.LogCtx(context.Background(), "message", "determined target release to test is "+releasePath)
+		r.logger.LogCtx(ctx, "message", "determined target release to test is "+releasePath)
 
 		releaseYAML, err := ioutil.ReadFile(releasePath)
 		if err != nil {
@@ -204,7 +204,7 @@ func (r *runner) run(ctx context.Context, cmd *cobra.Command, args []string) err
 		originalName := release.Name
 		release.Name = release.Name + "-" + strconv.Itoa(int(time.Now().Unix()))
 		releaseVersion = strings.TrimPrefix(release.Name, "v")
-		r.logger.LogCtx(context.Background(), "message", fmt.Sprintf("testing release %s for %s as %s", strings.TrimPrefix(originalName, "v"), provider, releaseVersion))
+		r.logger.LogCtx(ctx, "message", fmt.Sprintf("testing release %s for %s as %s", strings.TrimPrefix(originalName, "v"), provider, releaseVersion))
 
 		// Label for future garbage collection
 		if release.Labels == nil {
@@ -214,23 +214,23 @@ func (r *runner) run(ctx context.Context, cmd *cobra.Command, args []string) err
 	}
 
 	// Create the Release CR
-	r.logger.LogCtx(context.Background(), "message", "creating release CR")
-	_, err = k8sClient.G8sClient().ReleaseV1alpha1().Releases().Create(context.Background(), &release, v1.CreateOptions{})
+	r.logger.LogCtx(ctx, "message", "creating release CR")
+	_, err = k8sClient.G8sClient().ReleaseV1alpha1().Releases().Create(ctx, &release, v1.CreateOptions{})
 	if err != nil {
 		return microerror.Mask(err)
 	}
-	r.logger.LogCtx(context.Background(), "message", "created release CR")
+	r.logger.LogCtx(ctx, "message", "created release CR")
 
 	// Wait for the created release to be ready
-	r.logger.LogCtx(context.Background(), "message", "waiting for release to be ready")
+	r.logger.LogCtx(ctx, "message", "waiting for release to be ready")
 	{
 		o := func() error {
-			toCheck, err := k8sClient.G8sClient().ReleaseV1alpha1().Releases().Get(context.Background(), release.Name, v1.GetOptions{})
+			toCheck, err := k8sClient.G8sClient().ReleaseV1alpha1().Releases().Get(ctx, release.Name, v1.GetOptions{})
 			if err != nil {
 				return backoff.Permanent(err)
 			}
 			if !toCheck.Status.Ready {
-				r.logger.LogCtx(context.Background(), "message", "release is not ready yet")
+				r.logger.LogCtx(ctx, "message", "release is not ready yet")
 				return errors.New("not ready")
 			}
 
@@ -244,22 +244,22 @@ func (r *runner) run(ctx context.Context, cmd *cobra.Command, args []string) err
 			return microerror.Mask(err)
 		}
 	}
-	r.logger.LogCtx(context.Background(), "message", "release is ready")
+	r.logger.LogCtx(ctx, "message", "release is ready")
 
 	// Create the cluster under test
-	r.logger.LogCtx(context.Background(), "message", "creating cluster using target release")
-	clusterID, err := gsClient.CreateCluster(context.Background(), releaseVersion)
+	r.logger.LogCtx(ctx, "message", "creating cluster using target release")
+	clusterID, err := gsClient.CreateCluster(ctx, releaseVersion)
 	if err != nil {
 		return microerror.Mask(err)
 	}
-	r.logger.LogCtx(context.Background(), "message", fmt.Sprintf("created cluster %s", clusterID))
+	r.logger.LogCtx(ctx, "message", fmt.Sprintf("created cluster %s", clusterID))
 
 	var kubeconfig string
-	r.logger.LogCtx(context.Background(), "message", "creating kubeconfig for cluster")
+	r.logger.LogCtx(ctx, "message", "creating kubeconfig for cluster")
 	{
 		o := func() error {
 			// Create a keypair for the new tenant cluster
-			kubeconfig, err = gsClient.GetKubeconfig(context.Background(), clusterID)
+			kubeconfig, err = gsClient.GetKubeconfig(ctx, clusterID)
 			if err != nil {
 				// TODO: check to see if it's a permanent error or the kubeconfig just isn't ready yet
 				return microerror.Mask(err)
@@ -274,22 +274,22 @@ func (r *runner) run(ctx context.Context, cmd *cobra.Command, args []string) err
 			return microerror.Mask(err)
 		}
 	}
-	r.logger.LogCtx(context.Background(), "message", fmt.Sprintf("created kubeconfig with length %d", len(kubeconfig)))
+	r.logger.LogCtx(ctx, "message", fmt.Sprintf("created kubeconfig with length %d", len(kubeconfig)))
 
-	r.logger.LogCtx(context.Background(), "message", fmt.Sprintf("writing kubeconfig to path %s", r.flag.OutputKubeconfig))
+	r.logger.LogCtx(ctx, "message", fmt.Sprintf("writing kubeconfig to path %s", r.flag.OutputKubeconfig))
 	err = ioutil.WriteFile(r.flag.OutputKubeconfig, []byte(kubeconfig), 0644)
 	if err != nil {
 		return microerror.Mask(err)
 	}
 
-	r.logger.LogCtx(context.Background(), "message", fmt.Sprintf("writing cluster ID to path %s", r.flag.OutputClusterID))
+	r.logger.LogCtx(ctx, "message", fmt.Sprintf("writing cluster ID to path %s", r.flag.OutputClusterID))
 	err = ioutil.WriteFile(r.flag.OutputClusterID, []byte(clusterID), 0644)
 	if err != nil {
 		return microerror.Mask(err)
 	}
 
 	{
-		r.logger.LogCtx(context.Background(), "message", "waiting for cluster API to be reachable")
+		r.logger.LogCtx(ctx, "message", "waiting for cluster API to be reachable")
 		config, err := clientcmd.NewClientConfigFromBytes([]byte(kubeconfig))
 		if err != nil {
 			return microerror.Mask(err)
@@ -304,7 +304,7 @@ func (r *runner) run(ctx context.Context, cmd *cobra.Command, args []string) err
 		}
 
 		o := func() error {
-			nodes, err := k8sClient.CoreV1().Nodes().List(context.Background(), v1.ListOptions{})
+			nodes, err := k8sClient.CoreV1().Nodes().List(ctx, v1.ListOptions{})
 			if err != nil {
 				return microerror.Mask(err)
 			}
@@ -321,10 +321,14 @@ func (r *runner) run(ctx context.Context, cmd *cobra.Command, args []string) err
 				}
 			}
 			if nodeCount < 2 {
-				return microerror.Mask(fmt.Errorf("found %d registered nodes, waiting for at least 2", nodeCount))
+				message := fmt.Sprintf("found %d registered nodes, waiting for at least 2", nodeCount)
+				r.logger.LogCtx(ctx, "message", message)
+				return microerror.Mask(errors.New(message))
 			}
 			if readyCount < nodeCount {
-				return microerror.Mask(fmt.Errorf("%d out of %d nodes ready", readyCount, nodeCount))
+				message := fmt.Sprintf("%d out of %d nodes ready", readyCount, nodeCount)
+				r.logger.LogCtx(ctx, "message", message)
+				return microerror.Mask(errors.New(message))
 			}
 			return nil
 		}
@@ -335,10 +339,10 @@ func (r *runner) run(ctx context.Context, cmd *cobra.Command, args []string) err
 		if err != nil {
 			return microerror.Mask(err)
 		}
-		r.logger.LogCtx(context.Background(), "message", "API is now reachable")
+		r.logger.LogCtx(ctx, "message", "API is now reachable")
 	}
 
-	r.logger.LogCtx(context.Background(), "message", "setup complete")
+	r.logger.LogCtx(ctx, "message", "setup complete")
 
 	return nil
 }
