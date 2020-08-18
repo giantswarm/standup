@@ -19,7 +19,9 @@ import (
 	"github.com/giantswarm/micrologger"
 	"github.com/spf13/cobra"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/yaml"
 
 	"github.com/giantswarm/standup/pkg/gsclient"
@@ -284,6 +286,56 @@ func (r *runner) run(ctx context.Context, cmd *cobra.Command, args []string) err
 	err = ioutil.WriteFile(r.flag.OutputClusterID, []byte(clusterID), 0644)
 	if err != nil {
 		return microerror.Mask(err)
+	}
+
+	{
+		r.logger.LogCtx(context.Background(), "message", "waiting for cluster API to be reachable")
+		config, err := clientcmd.NewClientConfigFromBytes([]byte(kubeconfig))
+		if err != nil {
+			return microerror.Mask(err)
+		}
+		restConfig, err := config.ClientConfig()
+		if err != nil {
+			return microerror.Mask(err)
+		}
+		k8sClient, err := kubernetes.NewForConfig(restConfig)
+		if err != nil {
+			return microerror.Mask(err)
+		}
+
+		o := func() error {
+			nodes, err := k8sClient.CoreV1().Nodes().List(context.Background(), v1.ListOptions{})
+			if err != nil {
+				return microerror.Mask(err)
+			}
+			nodeCount := len(nodes.Items)
+			readyCount := 0
+			for _, node := range nodes.Items {
+				for _, condition := range node.Status.Conditions {
+					if condition.Type == "Ready" {
+						if condition.Status == "True" {
+							readyCount++
+						}
+						break
+					}
+				}
+			}
+			if nodeCount < 2 {
+				return microerror.Mask(fmt.Errorf("found %d registered nodes, waiting for at least 2", nodeCount))
+			}
+			if readyCount < nodeCount {
+				return microerror.Mask(fmt.Errorf("%d out of %d nodes ready", readyCount, nodeCount))
+			}
+			return nil
+		}
+
+		b := backoff.NewMaxRetries(20, 30*time.Second)
+
+		err = backoff.Retry(o, b)
+		if err != nil {
+			return microerror.Mask(err)
+		}
+		r.logger.LogCtx(context.Background(), "message", "API is now reachable")
 	}
 
 	r.logger.LogCtx(context.Background(), "message", "setup complete")
