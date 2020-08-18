@@ -262,6 +262,7 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 			kubeconfig, err = gsClient.GetKubeconfig(ctx, clusterID)
 			if err != nil {
 				// TODO: check to see if it's a permanent error or the kubeconfig just isn't ready yet
+				r.logger.LogCtx(ctx, "message", "error creating kubeconfig", "error", err)
 				return microerror.Mask(err)
 			}
 			return nil
@@ -288,16 +289,21 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 		return microerror.Mask(err)
 	}
 
-	{
+	if r.flag.Wait {
 		r.logger.LogCtx(ctx, "message", "waiting for cluster API to be reachable")
+
 		config, err := clientcmd.NewClientConfigFromBytes([]byte(kubeconfig))
 		if err != nil {
 			return microerror.Mask(err)
 		}
+
 		restConfig, err := config.ClientConfig()
 		if err != nil {
 			return microerror.Mask(err)
 		}
+
+		restConfig.Timeout = time.Second * 10
+
 		k8sClient, err := kubernetes.NewForConfig(restConfig)
 		if err != nil {
 			return microerror.Mask(err)
@@ -306,6 +312,7 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 		o := func() error {
 			nodes, err := k8sClient.CoreV1().Nodes().List(ctx, v1.ListOptions{})
 			if err != nil {
+				r.logger.LogCtx(ctx, "message", "error reaching API", "error", err)
 				return microerror.Mask(err)
 			}
 			nodeCount := len(nodes.Items)
@@ -333,7 +340,7 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 			return nil
 		}
 
-		b := backoff.NewMaxRetries(20, 30*time.Second)
+		b := backoff.NewMaxRetries(30, 20*time.Second)
 
 		err = backoff.Retry(o, b)
 		if err != nil {
