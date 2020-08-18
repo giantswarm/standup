@@ -274,13 +274,19 @@ func (r *runner) run(ctx context.Context, cmd *cobra.Command, args []string) err
 	}
 	r.logger.LogCtx(context.Background(), "message", fmt.Sprintf("created kubeconfig with length %d", len(kubeconfig)))
 
-	r.logger.LogCtx(context.Background(), "message", "setup complete")
-
-	// Write to path from flag
-	err = ioutil.WriteFile(r.flag.OutputPath, []byte(kubeconfig), 0644)
+	r.logger.LogCtx(context.Background(), "message", fmt.Sprintf("writing kubeconfig to path %s", r.flag.OutputKubeconfig))
+	err = ioutil.WriteFile(r.flag.OutputKubeconfig, []byte(kubeconfig), 0644)
 	if err != nil {
 		return microerror.Mask(err)
 	}
+
+	r.logger.LogCtx(context.Background(), "message", fmt.Sprintf("writing cluster ID to path %s", r.flag.OutputClusterID))
+	err = ioutil.WriteFile(r.flag.OutputClusterID, []byte(clusterID), 0644)
+	if err != nil {
+		return microerror.Mask(err)
+	}
+
+	r.logger.LogCtx(context.Background(), "message", "setup complete")
 
 	return nil
 }
