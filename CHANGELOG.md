@@ -11,4 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added logic for handling cluster creation errors that fail to create a cluster.
 
+### Changed
+
+- Modified `gsctl` execution to use the binary from the current `$PATH`.
+
 [Unreleased]: https://github.com/giantswarm/standup/tree/master
