@@ -121,7 +121,7 @@ func (c *Client) CreateCluster(ctx context.Context, releaseVersion string) (stri
 	}
 
 	var response CreationResponse
-	err = json.Unmarshal(output.Bytes(), &response)
+	err = json.Unmarshal(ignoreNonJSON(output.Bytes()), &response)
 	if err != nil {
 		return "", microerror.Mask(err)
 	}
@@ -144,7 +144,7 @@ func (c *Client) DeleteCluster(ctx context.Context, clusterID string) error {
 	}
 
 	var response DeletionResponse
-	err = json.Unmarshal(output.Bytes(), &response)
+	err = json.Unmarshal(ignoreNonJSON(output.Bytes()), &response)
 	if err != nil {
 		return microerror.Mask(err)
 	}
@@ -166,7 +166,7 @@ func (c *Client) GetKubeconfig(ctx context.Context, clusterID string) (string, e
 	}
 
 	var response KubeconfigResponse
-	err = json.Unmarshal(output.Bytes(), &response)
+	err = json.Unmarshal(ignoreNonJSON(output.Bytes()), &response)
 	if err != nil {
 		return "", microerror.Mask(err)
 	}
@@ -189,7 +189,7 @@ func (c *Client) ListClusters(ctx context.Context) ([]ClusterEntry, error) {
 	}
 
 	var response []ClusterEntry
-	err = json.Unmarshal(output.Bytes(), &response)
+	err = json.Unmarshal(ignoreNonJSON(output.Bytes()), &response)
 	if err != nil {
 		return nil, microerror.Mask(err)
 	}
@@ -212,4 +212,11 @@ func (c *Client) GetClusterReleaseVersion(ctx context.Context, clusterID string)
 	}
 
 	return "", microerror.Maskf(clusterNotFoundError, fmt.Sprintf("cluster %s was not found", clusterID))
+}
+
+func ignoreNonJSON(input []byte) []byte {
+	openingBracketIndex := strings.Index(string(input), "{")
+	closingBracketIndex := strings.LastIndex(string(input), "}")
+
+	return input[openingBracketIndex : closingBracketIndex+1]
 }
