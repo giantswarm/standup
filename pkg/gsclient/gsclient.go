@@ -128,7 +128,7 @@ func (c *Client) CreateCluster(ctx context.Context, releaseVersion string) (stri
 		return "", microerror.Mask(err)
 	}
 
-	if response.Result == "error" {
+	if response.Result == CreationResultError {
 		return "", microerror.Maskf(clusterCreationError, output.String())
 	} else if response.Result == CreationResultCreatedWithError {
 		return response.ClusterID, microerror.Maskf(clusterCreationError, output.String())
