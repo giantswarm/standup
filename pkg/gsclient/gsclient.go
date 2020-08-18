@@ -105,6 +105,7 @@ func (c *Client) runWithGsctl(args string) (bytes.Buffer, error) {
 
 	err := gsctlCmd.Run()
 	if err != nil {
+		fmt.Println(stdout.String())
 		fmt.Println(stderr.String())
 		return stdout, microerror.Mask(err)
 	}
