@@ -235,7 +235,7 @@ func (r *runner) run(ctx context.Context, cmd *cobra.Command, args []string) err
 			return nil
 		}
 
-		b := backoff.NewMaxRetries(10, 20*time.Second)
+		b := backoff.NewMaxRetries(30, 20*time.Second)
 
 		err = backoff.Retry(o, b)
 		if err != nil {
