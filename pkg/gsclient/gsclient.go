@@ -122,7 +122,7 @@ func (c *Client) CreateCluster(ctx context.Context, releaseVersion string) (stri
 	}
 
 	var response CreationResponse
-	err = json.Unmarshal(ignoreWarnings(output.Bytes()), &response)
+	err = json.Unmarshal(ignoreNonJSON(output.Bytes()), &response)
 	if err != nil {
 		return "", microerror.Mask(err)
 	}
@@ -145,7 +145,7 @@ func (c *Client) DeleteCluster(ctx context.Context, clusterID string) error {
 	}
 
 	var response DeletionResponse
-	err = json.Unmarshal(ignoreWarnings(output.Bytes()), &response)
+	err = json.Unmarshal(ignoreNonJSON(output.Bytes()), &response)
 	if err != nil {
 		return microerror.Mask(err)
 	}
@@ -167,7 +167,7 @@ func (c *Client) GetKubeconfig(ctx context.Context, clusterID string) (string, e
 	}
 
 	var response KubeconfigResponse
-	err = json.Unmarshal(ignoreWarnings(output.Bytes()), &response)
+	err = json.Unmarshal(ignoreNonJSON(output.Bytes()), &response)
 	if err != nil {
 		return "", microerror.Mask(err)
 	}
@@ -190,7 +190,7 @@ func (c *Client) ListClusters(ctx context.Context) ([]ClusterEntry, error) {
 	}
 
 	var response []ClusterEntry
-	err = json.Unmarshal(ignoreWarnings(output.Bytes()), &response)
+	err = json.Unmarshal(ignoreNonJSON(output.Bytes()), &response)
 	if err != nil {
 		return nil, microerror.Mask(err)
 	}
@@ -215,6 +215,25 @@ func (c *Client) GetClusterReleaseVersion(ctx context.Context, clusterID string)
 	return "", microerror.Maskf(clusterNotFoundError, fmt.Sprintf("cluster %s was not found", clusterID))
 }
 
-func ignoreWarnings(input []byte) []byte {
-	return bytes.ReplaceAll(input, []byte("Warning:*\n"), []byte{})
+func ignoreNonJSON(input []byte) []byte {
+	curlyBracketIndex := strings.Index(string(input), "{")
+	squareBracketIndex := strings.Index(string(input), "[")
+
+	if curlyBracketIndex == -1 {
+		// Input is not a JSON
+		return []byte{}
+	}
+
+	if squareBracketIndex == -1 {
+		// No arrays, JSON starts with "{"
+		return input[curlyBracketIndex : strings.LastIndex(string(input), "}")+1]
+	}
+
+	if curlyBracketIndex < squareBracketIndex {
+		// JSON starts with "{"
+		return input[curlyBracketIndex : strings.LastIndex(string(input), "}")+1]
+	}
+
+	// JSON starts with "["
+	return input[squareBracketIndex : strings.LastIndex(string(input), "]")+1]
 }
