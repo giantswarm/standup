@@ -11,38 +11,42 @@ import (
 )
 
 const (
-	defaultKubeconfigPath = "/workspace/cluster/kubeconfig"
+	defaultOutputClusterIDPath  = "/workspace/cluster/cluster-id"
+	defaultOutputKubeconfigPath = "/workspace/cluster/kubeconfig"
 
-	flagKubeconfig = "kubeconfig"
-	flagEndpoint   = "endpoint"
-	flagInCluster  = "in-cluster"
-	flagOutput     = "output"
+	flagKubeconfig       = "kubeconfig"
+	flagEndpoint         = "endpoint"
+	flagInCluster        = "in-cluster"
+	flagOutputClusterID  = "output-cluster-id"
+	flagOutputKubeconfig = "output-kubeconfig"
 	flagOwnerName  = "owner-name"
 	flagOwnerUID   = "owner-uid"
-	flagProvider   = "provider"
-	flagRelease    = "release"
-	flagReleases   = "releases"
-	flagToken      = "token"
+	flagProvider         = "provider"
+	flagRelease          = "release"
+	flagReleases         = "releases"
+	flagToken            = "token"
 )
 
 type flag struct {
-	Kubeconfig string
-	Endpoint   string
-	InCluster  bool
-	Provider   string
-	OutputPath string
-	OwnerName  string
-	OwnerUID   string
-	Release    string
-	Releases   string
-	Token      string
+	Kubeconfig       string
+	Endpoint         string
+	InCluster        bool
+	Provider         string
+	OutputClusterID  string
+	OutputKubeconfig string
+	OwnerName string
+	OwnerUID string
+	Release          string
+	Releases         string
+	Token            string
 }
 
 func (f *flag) Init(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&f.Kubeconfig, flagKubeconfig, "k", "", `The path to the kubeconfig for the control plane.`)
 	cmd.Flags().StringVarP(&f.Endpoint, flagEndpoint, "n", "", `The endpoint of the target control plane's API.`)
 	cmd.Flags().BoolVarP(&f.InCluster, flagInCluster, "i", false, `True if this program is running in a Kubernetes cluster and should communicate with the API via the injected service account token.`)
-	cmd.Flags().StringVarP(&f.OutputPath, flagOutput, "o", "", fmt.Sprintf(`The path for storing the kubeconfig for the created cluster.`))
+	cmd.Flags().StringVar(&f.OutputClusterID, flagOutputClusterID, "", fmt.Sprintf(`The path of the file in which to store the cluster ID of the created cluster.`))
+	cmd.Flags().StringVar(&f.OutputKubeconfig, flagOutputKubeconfig, "", fmt.Sprintf(`The path of the file in which to store the kubeconfig of the created cluster.`))
 	cmd.Flags().StringVar(&f.OwnerName, flagOwnerName, "", fmt.Sprintf(`The name of the ProwJob which will own the test release for automatic deletion. If empty, no owner reference will be set.`))
 	cmd.Flags().StringVar(&f.OwnerUID, flagOwnerUID, "", fmt.Sprintf(`The UID of the ProwJob which will own the test release for automatic deletion. If empty, no owner reference will be set.`))
 	cmd.Flags().StringVarP(&f.Provider, flagProvider, "p", "", fmt.Sprintf(`The provider of the target release. Possible values: <%s>`, strings.Join(gsclient.AllProviders(), "|")))
@@ -58,9 +62,11 @@ func (f *flag) Validate() error {
 	if f.OwnerName == "" && f.OwnerUID != "" || f.OwnerName != "" && f.OwnerUID == "" {
 		return microerror.Maskf(invalidFlagError, "--%s and --%s must both be set or both be unset", flagOwnerName, flagOwnerUID)
 	}
-	if f.OutputPath == "" {
-		// Set default output path if none is given
-		f.OutputPath = defaultKubeconfigPath
+	if f.OutputClusterID == "" {
+		f.OutputClusterID = defaultOutputClusterIDPath
+	}
+	if f.OutputKubeconfig == "" {
+		f.OutputKubeconfig = defaultOutputKubeconfigPath
 	}
 	if f.Releases == "" {
 		return microerror.Maskf(invalidFlagError, "--%s is required", flagReleases)
