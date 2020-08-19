@@ -21,6 +21,6 @@ RUN apk add --no-cache git
 USER giantswarm
 COPY --from=gsctl /go/gsctl/gsctl /usr/bin/gsctl
 COPY --from=kubectl /usr/local/bin/kubectl /usr/bin/kubectl
-ADD ./standup /standup
+ADD ./standup /usr/local/bin/standup
 
-ENTRYPOINT ["/standup"]
+ENTRYPOINT ["standup"]
