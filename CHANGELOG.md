@@ -19,4 +19,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Modified `gsctl` execution to use the binary from the current `$PATH`.
 
+### Removed
+
+- Removed `--wait` flag from `create` command.
+- Removed unused `test` command.
+
 [Unreleased]: https://github.com/giantswarm/standup/tree/master
