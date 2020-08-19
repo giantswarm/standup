@@ -99,6 +99,7 @@ func findNewRelease(diff string) (releasePath string, provider string, err error
 	{
 		lines := strings.Split(diff, "\n")
 		for _, line := range lines {
+			fmt.Println("checking line: ", line)
 			if strings.HasSuffix(line, "/release.yaml") {
 				fields := strings.Fields(line)
 				if len(fields) < 2 {
@@ -177,6 +178,7 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 				if err != nil {
 					return microerror.Mask(err)
 				}
+				r.logger.LogCtx(ctx, "message", "calculated diff", "diff", diff)
 
 				// Parse the git diff to get the release file, version, and provider
 				releasePath, provider, err = findNewRelease(diff)
