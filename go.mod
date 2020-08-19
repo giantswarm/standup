@@ -6,6 +6,7 @@ require (
 	github.com/Masterminds/semver/v3 v3.1.0
 	github.com/giantswarm/apiextensions v0.4.17-0.20200723160042-89aed92d1080
 	github.com/giantswarm/backoff v0.2.0
+	github.com/giantswarm/errors v0.2.3
 	github.com/giantswarm/k8sclient/v3 v3.1.3-0.20200724085258-345602646ea8
 	github.com/giantswarm/microerror v0.2.1
 	github.com/giantswarm/micrologger v0.3.1

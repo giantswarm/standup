@@ -10,8 +10,8 @@ import (
 
 	"github.com/giantswarm/standup/cmd/cleanup"
 	"github.com/giantswarm/standup/cmd/create"
-	"github.com/giantswarm/standup/cmd/test"
 	"github.com/giantswarm/standup/cmd/version"
+	"github.com/giantswarm/standup/cmd/wait"
 )
 
 const (
@@ -49,15 +49,15 @@ func New(config Config) (*cobra.Command, error) {
 
 	var err error
 
-	var testCmd *cobra.Command
+	var cleanupCmd *cobra.Command
 	{
-		c := test.Config{
+		c := cleanup.Config{
 			Logger: config.Logger,
 			Stderr: config.Stderr,
 			Stdout: config.Stdout,
 		}
 
-		testCmd, err = test.New(c)
+		cleanupCmd, err = cleanup.New(c)
 		if err != nil {
 			return nil, microerror.Mask(err)
 		}
@@ -77,20 +77,6 @@ func New(config Config) (*cobra.Command, error) {
 		}
 	}
 
-	var cleanupCmd *cobra.Command
-	{
-		c := cleanup.Config{
-			Logger: config.Logger,
-			Stderr: config.Stderr,
-			Stdout: config.Stdout,
-		}
-
-		cleanupCmd, err = cleanup.New(c)
-		if err != nil {
-			return nil, microerror.Mask(err)
-		}
-	}
-
 	var versionCmd *cobra.Command
 	{
 		c := version.Config{
@@ -103,6 +89,20 @@ func New(config Config) (*cobra.Command, error) {
 		}
 
 		versionCmd, err = version.New(c)
+		if err != nil {
+			return nil, microerror.Mask(err)
+		}
+	}
+
+	var waitCmd *cobra.Command
+	{
+		c := wait.Config{
+			Logger: config.Logger,
+			Stderr: config.Stderr,
+			Stdout: config.Stdout,
+		}
+
+		waitCmd, err = wait.New(c)
 		if err != nil {
 			return nil, microerror.Mask(err)
 		}
@@ -127,10 +127,10 @@ func New(config Config) (*cobra.Command, error) {
 
 	f.Init(c)
 
-	c.AddCommand(createCmd)
 	c.AddCommand(cleanupCmd)
-	c.AddCommand(testCmd)
+	c.AddCommand(createCmd)
 	c.AddCommand(versionCmd)
+	c.AddCommand(waitCmd)
 
 	return c, nil
 }
