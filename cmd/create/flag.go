@@ -19,8 +19,8 @@ const (
 	flagInCluster        = "in-cluster"
 	flagOutputClusterID  = "output-cluster-id"
 	flagOutputKubeconfig = "output-kubeconfig"
-	flagOwnerName  = "owner-name"
-	flagOwnerUID   = "owner-uid"
+	flagOwnerName        = "owner-name"
+	flagOwnerUID         = "owner-uid"
 	flagProvider         = "provider"
 	flagRelease          = "release"
 	flagReleases         = "releases"
@@ -34,8 +34,8 @@ type flag struct {
 	Provider         string
 	OutputClusterID  string
 	OutputKubeconfig string
-	OwnerName string
-	OwnerUID string
+	OwnerName        string
+	OwnerUID         string
 	Release          string
 	Releases         string
 	Token            string
