@@ -221,7 +221,7 @@ func ignoreNonJSON(input []byte) []byte {
 
 	if curlyBracketIndex == -1 {
 		// Input is not a JSON
-		return []byte{}
+		return nil
 	}
 
 	if squareBracketIndex == -1 {
