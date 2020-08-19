@@ -216,8 +216,24 @@ func (c *Client) GetClusterReleaseVersion(ctx context.Context, clusterID string)
 }
 
 func ignoreNonJSON(input []byte) []byte {
-	openingBracketIndex := strings.Index(string(input), "{")
-	closingBracketIndex := strings.LastIndex(string(input), "}")
+	curlyBracketIndex := strings.Index(string(input), "{")
+	squareBracketIndex := strings.Index(string(input), "[")
 
-	return input[openingBracketIndex : closingBracketIndex+1]
+	if curlyBracketIndex == -1 {
+		// Input is not a JSON
+		return nil
+	}
+
+	if squareBracketIndex == -1 {
+		// No arrays, JSON starts with "{"
+		return input[curlyBracketIndex : strings.LastIndex(string(input), "}")+1]
+	}
+
+	if curlyBracketIndex < squareBracketIndex {
+		// JSON starts with "{"
+		return input[curlyBracketIndex : strings.LastIndex(string(input), "}")+1]
+	}
+
+	// JSON starts with "["
+	return input[squareBracketIndex : strings.LastIndex(string(input), "]")+1]
 }
