@@ -64,7 +64,7 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 	}
 
 	{
-		r.logger.LogCtx(ctx, "message", "waiting for cluster API to be reachable")
+		r.logger.LogCtx(ctx, "message", "waiting for tenant cluster API to be reachable")
 
 		o := func() error {
 			_, err := k8sClient.CoreV1().Nodes().List(ctx, v1.ListOptions{})
