@@ -19,9 +19,7 @@ import (
 	"github.com/giantswarm/micrologger"
 	"github.com/spf13/cobra"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/yaml"
 
 	"github.com/giantswarm/standup/pkg/gsclient"
@@ -287,66 +285,6 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 	err = ioutil.WriteFile(r.flag.OutputClusterID, []byte(clusterID), 0644)
 	if err != nil {
 		return microerror.Mask(err)
-	}
-
-	if r.flag.Wait {
-		r.logger.LogCtx(ctx, "message", "waiting for cluster API to be reachable")
-
-		config, err := clientcmd.NewClientConfigFromBytes([]byte(kubeconfig))
-		if err != nil {
-			return microerror.Mask(err)
-		}
-
-		restConfig, err := config.ClientConfig()
-		if err != nil {
-			return microerror.Mask(err)
-		}
-
-		restConfig.Timeout = time.Second * 10
-
-		k8sClient, err := kubernetes.NewForConfig(restConfig)
-		if err != nil {
-			return microerror.Mask(err)
-		}
-
-		o := func() error {
-			nodes, err := k8sClient.CoreV1().Nodes().List(ctx, v1.ListOptions{})
-			if err != nil {
-				r.logger.LogCtx(ctx, "message", "error reaching API", "error", err)
-				return microerror.Mask(err)
-			}
-			nodeCount := len(nodes.Items)
-			readyCount := 0
-			for _, node := range nodes.Items {
-				for _, condition := range node.Status.Conditions {
-					if condition.Type == "Ready" {
-						if condition.Status == "True" {
-							readyCount++
-						}
-						break
-					}
-				}
-			}
-			if nodeCount < 2 {
-				message := fmt.Sprintf("found %d registered nodes, waiting for at least 2", nodeCount)
-				r.logger.LogCtx(ctx, "message", message)
-				return microerror.Mask(errors.New(message))
-			}
-			if readyCount < nodeCount {
-				message := fmt.Sprintf("%d out of %d nodes ready", readyCount, nodeCount)
-				r.logger.LogCtx(ctx, "message", message)
-				return microerror.Mask(errors.New(message))
-			}
-			return nil
-		}
-
-		b := backoff.NewMaxRetries(60, 20*time.Second)
-
-		err = backoff.Retry(o, b)
-		if err != nil {
-			return microerror.Mask(err)
-		}
-		r.logger.LogCtx(ctx, "message", "API is now reachable")
 	}
 
 	r.logger.LogCtx(ctx, "message", "setup complete")

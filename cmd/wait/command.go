@@ -1,4 +1,4 @@
-package test
+package wait
 
 import (
 	"io"
@@ -10,8 +10,8 @@ import (
 )
 
 const (
-	name        = "test"
-	description = "Runs one or more tests against a new or existing cluster."
+	name        = "wait"
+	description = "Waits for a cluster to satisfy various readiness checks."
 )
 
 type Config struct {

@@ -1,4 +1,4 @@
-package test
+package wait
 
 import "github.com/giantswarm/microerror"
 
