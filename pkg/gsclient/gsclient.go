@@ -50,6 +50,7 @@ type ClusterEntry struct {
 
 const (
 	CreationResultCreated          = "created"
+	CreationResultError            = "error"
 	CreationResultCreatedWithError = "created-with-errors"
 	DeletionResultScheduled        = "deletion scheduled"
 )
@@ -88,7 +89,7 @@ func New(config Config) (*Client, error) {
 	return &client, nil
 }
 
-func (c *Client) runWithGsctl(args string) (bytes.Buffer, bytes.Buffer, error) {
+func (c *Client) runWithGsctl(args string) (bytes.Buffer, error) {
 	argsArr := strings.Fields(args)
 
 	// Add additional arguments from our client
@@ -97,43 +98,39 @@ func (c *Client) runWithGsctl(args string) (bytes.Buffer, bytes.Buffer, error) {
 
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
-	gsctlCmd := &exec.Cmd{
-		Path:   "./gsctl", // TODO: don't hardcode this
-		Args:   append([]string{"./gsctl"}, argsArr...),
-		Stderr: &stderr,
-		Stdout: &stdout,
-	}
+
+	gsctlCmd := exec.Command("gsctl", argsArr...)
+	gsctlCmd.Stdout = &stdout
+	gsctlCmd.Stderr = &stderr
 
 	err := gsctlCmd.Run()
 	if err != nil {
 		fmt.Println(stdout.String())
 		fmt.Println(stderr.String())
-		return stdout, stderr, microerror.Mask(err)
+		return stdout, microerror.Mask(err)
 	}
 
-	return stdout, stderr, nil
+	return stdout, nil
 }
 
 func (c *Client) CreateCluster(ctx context.Context, releaseVersion string) (string, error) {
 
 	// TODO: extract and structure all these hardcoded values
-	output, stderr, err := c.runWithGsctl("--output=json create cluster --owner conformance-testing --name " + releaseVersion + " --release " + releaseVersion)
+	output, err := c.runWithGsctl("--output=json create cluster --owner conformance-testing --name " + releaseVersion + " --release " + releaseVersion)
 	if err != nil {
 		return "", microerror.Mask(err)
-	}
-	// TODO: Handle stderr somehow
-	if stderr.Len() > 0 {
-		fmt.Println(stderr)
 	}
 
 	var response CreationResponse
-	err = json.Unmarshal(output.Bytes(), &response)
+	err = json.Unmarshal(ignoreNonJSON(output.Bytes()), &response)
 	if err != nil {
 		return "", microerror.Mask(err)
 	}
 
-	if response.Result == CreationResultCreatedWithError {
-		return response.ClusterID, microerror.Maskf(clusterCreationError, stderr.String())
+	if response.Result == CreationResultError {
+		return "", microerror.Maskf(clusterCreationError, output.String())
+	} else if response.Result == CreationResultCreatedWithError {
+		return response.ClusterID, microerror.Maskf(clusterCreationError, output.String())
 	}
 
 	return response.ClusterID, nil
@@ -142,23 +139,19 @@ func (c *Client) CreateCluster(ctx context.Context, releaseVersion string) (stri
 func (c *Client) DeleteCluster(ctx context.Context, clusterID string) error {
 
 	// TODO: extract and structure all these hardcoded values
-	output, stderr, err := c.runWithGsctl(fmt.Sprintf("--output=json delete cluster %s", clusterID))
-	// TODO: Handle stderr somehow
-	if stderr.Len() > 0 {
-		fmt.Println(stderr)
-	}
+	output, err := c.runWithGsctl(fmt.Sprintf("--output=json delete cluster %s", clusterID))
 	if err != nil {
 		return microerror.Mask(err)
 	}
 
 	var response DeletionResponse
-	err = json.Unmarshal(output.Bytes(), &response)
+	err = json.Unmarshal(ignoreNonJSON(output.Bytes()), &response)
 	if err != nil {
 		return microerror.Mask(err)
 	}
 
 	if response.Result != DeletionResultScheduled {
-		return microerror.Maskf(clusterDeletionError, stderr.String())
+		return microerror.Maskf(clusterDeletionError, output.String())
 	}
 
 	return nil
@@ -168,13 +161,13 @@ func (c *Client) GetKubeconfig(ctx context.Context, clusterID string) (string, e
 
 	// TODO: extract and structure all these hardcoded values
 	args := fmt.Sprintf("--output=json create kubeconfig --cluster=%s --certificate-organizations system:masters", clusterID)
-	output, _, err := c.runWithGsctl(args)
+	output, err := c.runWithGsctl(args)
 	if err != nil {
 		return "", microerror.Mask(err)
 	}
 
 	var response KubeconfigResponse
-	err = json.Unmarshal(output.Bytes(), &response)
+	err = json.Unmarshal(ignoreNonJSON(output.Bytes()), &response)
 	if err != nil {
 		return "", microerror.Mask(err)
 	}
@@ -191,13 +184,13 @@ func (c *Client) GetKubeconfig(ctx context.Context, clusterID string) (string, e
 func (c *Client) ListClusters(ctx context.Context) ([]ClusterEntry, error) {
 	// TODO: extract and structure all these hardcoded values
 	args := "--output=json list clusters --show-deleting"
-	output, _, err := c.runWithGsctl(args)
+	output, err := c.runWithGsctl(args)
 	if err != nil {
 		return nil, microerror.Mask(err)
 	}
 
 	var response []ClusterEntry
-	err = json.Unmarshal(output.Bytes(), &response)
+	err = json.Unmarshal(ignoreNonJSON(output.Bytes()), &response)
 	if err != nil {
 		return nil, microerror.Mask(err)
 	}
@@ -220,4 +213,27 @@ func (c *Client) GetClusterReleaseVersion(ctx context.Context, clusterID string)
 	}
 
 	return "", microerror.Maskf(clusterNotFoundError, fmt.Sprintf("cluster %s was not found", clusterID))
+}
+
+func ignoreNonJSON(input []byte) []byte {
+	curlyBracketIndex := strings.Index(string(input), "{")
+	squareBracketIndex := strings.Index(string(input), "[")
+
+	if curlyBracketIndex == -1 {
+		// Input is not a JSON
+		return nil
+	}
+
+	if squareBracketIndex == -1 {
+		// No arrays, JSON starts with "{"
+		return input[curlyBracketIndex : strings.LastIndex(string(input), "}")+1]
+	}
+
+	if curlyBracketIndex < squareBracketIndex {
+		// JSON starts with "{"
+		return input[curlyBracketIndex : strings.LastIndex(string(input), "}")+1]
+	}
+
+	// JSON starts with "["
+	return input[squareBracketIndex : strings.LastIndex(string(input), "]")+1]
 }

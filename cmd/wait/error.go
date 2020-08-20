@@ -1,6 +1,10 @@
-package test
+package wait
 
-import "github.com/giantswarm/microerror"
+import (
+	"regexp"
+
+	"github.com/giantswarm/microerror"
+)
 
 var invalidConfigError = &microerror.Error{
 	Kind: "invalidConfigError",
@@ -18,4 +22,13 @@ var invalidFlagError = &microerror.Error{
 // IsInvalidFlag asserts invalidFlagError.
 func IsInvalidFlag(err error) bool {
 	return microerror.Cause(err) == invalidFlagError
+}
+
+var serverErrorPattern = regexp.MustCompile(`an error on the server .*`)
+
+func IsServerError(err error) bool {
+	if err == nil {
+		return false
+	}
+	return serverErrorPattern.MatchString(err.Error())
 }
