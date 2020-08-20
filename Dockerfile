@@ -2,7 +2,6 @@
 FROM quay.io/giantswarm/golang:1.14.7 AS gsctl
 RUN git clone https://github.com/giantswarm/gsctl.git
 WORKDIR /go/gsctl
-RUN git checkout add-json-output
 RUN CGO_ENABLED=0 go build
 
 # Use the giantswarm alpine again when gsctl changes are merged
