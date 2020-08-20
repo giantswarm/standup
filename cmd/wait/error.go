@@ -27,5 +27,8 @@ func IsInvalidFlag(err error) bool {
 var serverErrorPattern = regexp.MustCompile(`an error on the server .*`)
 
 func IsServerError(err error) bool {
+	if err == nil {
+		return false
+	}
 	return serverErrorPattern.MatchString(err.Error())
 }

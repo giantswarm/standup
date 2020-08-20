@@ -82,6 +82,7 @@ func fetchAndDiff(dir string) (string, error) {
 			"--name-status",   // only show filename and the type of change (A=added, etc.)
 			"origin/master",   // diff against the latest master
 			"--diff-filter=A", // only show added files
+			"--no-renames",    // disable rename detection so we always find new releases
 			"HEAD",            // base ref for the diff
 		}
 		var err error
