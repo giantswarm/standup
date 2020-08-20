@@ -19,7 +19,6 @@ import (
 	"github.com/giantswarm/micrologger"
 	"github.com/spf13/cobra"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/yaml"
 
@@ -100,7 +99,6 @@ func findNewRelease(diff string) (releasePath string, provider string, err error
 	{
 		lines := strings.Split(diff, "\n")
 		for _, line := range lines {
-			fmt.Println("checking line: ", line)
 			if strings.HasSuffix(line, "/release.yaml") {
 				fields := strings.Fields(line)
 				if len(fields) < 2 {
@@ -179,7 +177,6 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 				if err != nil {
 					return microerror.Mask(err)
 				}
-				r.logger.LogCtx(ctx, "message", "calculated diff", "diff", diff)
 
 				// Parse the git diff to get the release file, version, and provider
 				releasePath, provider, err = findNewRelease(diff)
@@ -213,17 +210,6 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 			release.Labels = map[string]string{}
 		}
 		release.Labels["giantswarm.io/testing"] = "true"
-
-		if r.flag.OwnerName != "" {
-			blockOwnerDeletion := true
-			release.OwnerReferences = append(release.OwnerReferences, v1.OwnerReference{
-				APIVersion:         "prow.k8s.io/v1",
-				BlockOwnerDeletion: &blockOwnerDeletion,
-				Kind:               "ProwJob",
-				Name:               r.flag.OwnerName,
-				UID:                types.UID(r.flag.OwnerUID),
-			})
-		}
 	}
 
 	// Create the Release CR

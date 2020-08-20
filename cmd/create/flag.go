@@ -19,8 +19,6 @@ const (
 	flagInCluster        = "in-cluster"
 	flagOutputClusterID  = "output-cluster-id"
 	flagOutputKubeconfig = "output-kubeconfig"
-	flagOwnerName        = "owner-name"
-	flagOwnerUID         = "owner-uid"
 	flagProvider         = "provider"
 	flagRelease          = "release"
 	flagReleases         = "releases"
@@ -34,8 +32,6 @@ type flag struct {
 	Provider         string
 	OutputClusterID  string
 	OutputKubeconfig string
-	OwnerName        string
-	OwnerUID         string
 	Release          string
 	Releases         string
 	Token            string
@@ -47,8 +43,6 @@ func (f *flag) Init(cmd *cobra.Command) {
 	cmd.Flags().BoolVarP(&f.InCluster, flagInCluster, "i", false, `True if this program is running in a Kubernetes cluster and should communicate with the API via the injected service account token.`)
 	cmd.Flags().StringVar(&f.OutputClusterID, flagOutputClusterID, "", fmt.Sprintf(`The path of the file in which to store the cluster ID of the created cluster.`))
 	cmd.Flags().StringVar(&f.OutputKubeconfig, flagOutputKubeconfig, "", fmt.Sprintf(`The path of the file in which to store the kubeconfig of the created cluster.`))
-	cmd.Flags().StringVar(&f.OwnerName, flagOwnerName, "", fmt.Sprintf(`The name of the ProwJob which will own the test release for automatic deletion. If empty, no owner reference will be set.`))
-	cmd.Flags().StringVar(&f.OwnerUID, flagOwnerUID, "", fmt.Sprintf(`The UID of the ProwJob which will own the test release for automatic deletion. If empty, no owner reference will be set.`))
 	cmd.Flags().StringVarP(&f.Provider, flagProvider, "p", "", fmt.Sprintf(`The provider of the target release. Possible values: <%s>`, strings.Join(gsclient.AllProviders(), "|")))
 	cmd.Flags().StringVarP(&f.Release, flagRelease, "r", "", fmt.Sprintf(`The semantic version of the release to be tested.`))
 	cmd.Flags().StringVarP(&f.Releases, flagReleases, "s", "", fmt.Sprintf(`The path of the releases repo on the local filesystem.`))
@@ -58,9 +52,6 @@ func (f *flag) Init(cmd *cobra.Command) {
 func (f *flag) Validate() error {
 	if f.Kubeconfig == "" && !f.InCluster || f.Kubeconfig != "" && f.InCluster {
 		return microerror.Maskf(invalidFlagError, "--%s and --%s are mutually exclusive", flagKubeconfig, flagInCluster)
-	}
-	if f.OwnerName == "" && f.OwnerUID != "" || f.OwnerName != "" && f.OwnerUID == "" {
-		return microerror.Maskf(invalidFlagError, "--%s and --%s must both be set or both be unset", flagOwnerName, flagOwnerUID)
 	}
 	if f.OutputClusterID == "" {
 		f.OutputClusterID = defaultOutputClusterIDPath
