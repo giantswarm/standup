@@ -2,7 +2,6 @@
 FROM quay.io/giantswarm/golang:1.14.7 AS gsctl
 RUN git clone https://github.com/giantswarm/gsctl.git
 WORKDIR /go/gsctl
-RUN git checkout add-json-output
 RUN CGO_ENABLED=0 go build
 
 FROM quay.io/giantswarm/alpine:3.12 AS kubectl
