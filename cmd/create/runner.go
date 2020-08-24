@@ -253,12 +253,11 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 	}
 	r.logger.LogCtx(ctx, "message", fmt.Sprintf("created cluster %s", clusterID))
 
-	var kubeconfig string
-	r.logger.LogCtx(ctx, "message", "creating kubeconfig for cluster")
+	r.logger.LogCtx(ctx, "message", fmt.Sprintf("creating and writing kubeconfig for cluster %s to path %s", clusterID, r.flag.OutputKubeconfig))
 	{
 		o := func() error {
-			// Create a keypair for the new tenant cluster
-			kubeconfig, err = gsClient.GetKubeconfig(ctx, clusterID)
+			// Create a keypair and kubeconfig for the new tenant cluster
+			err = gsClient.CreateKubeconfig(ctx, clusterID, r.flag.OutputKubeconfig)
 			if err != nil {
 				// TODO: check to see if it's a permanent error or the kubeconfig just isn't ready yet
 				r.logger.LogCtx(ctx, "message", "error creating kubeconfig", "error", err)
@@ -273,13 +272,6 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 		if err != nil {
 			return microerror.Mask(err)
 		}
-	}
-	r.logger.LogCtx(ctx, "message", fmt.Sprintf("created kubeconfig with length %d", len(kubeconfig)))
-
-	r.logger.LogCtx(ctx, "message", fmt.Sprintf("writing kubeconfig to path %s", r.flag.OutputKubeconfig))
-	err = ioutil.WriteFile(r.flag.OutputKubeconfig, []byte(kubeconfig), 0644)
-	if err != nil {
-		return microerror.Mask(err)
 	}
 
 	r.logger.LogCtx(ctx, "message", fmt.Sprintf("writing cluster ID to path %s", r.flag.OutputClusterID))

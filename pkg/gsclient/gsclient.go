@@ -38,11 +38,6 @@ type DeletionResponse struct {
 	Result    string `json:"result"`
 }
 
-type KubeconfigResponse struct {
-	Kubeconfig string `json:"kubeconfig"`
-	Result     string `json:"result"`
-}
-
 type ClusterEntry struct {
 	ID             string `json:"id"`
 	ReleaseVersion string `json:"release_version"`
@@ -157,28 +152,17 @@ func (c *Client) DeleteCluster(ctx context.Context, clusterID string) error {
 	return nil
 }
 
-func (c *Client) GetKubeconfig(ctx context.Context, clusterID string) (string, error) {
+func (c *Client) CreateKubeconfig(ctx context.Context, clusterID, kubeconfigPath string) error {
 
 	// TODO: extract and structure all these hardcoded values
-	args := fmt.Sprintf("--output=json create kubeconfig --cluster=%s --certificate-organizations system:masters", clusterID)
-	output, err := c.runWithGsctl(args)
+	args := fmt.Sprintf("create kubeconfig --cluster=%s --certificate-organizations system:masters --force --self-contained %s", clusterID, kubeconfigPath)
+
+	_, err := c.runWithGsctl(args)
 	if err != nil {
-		return "", microerror.Mask(err)
+		return microerror.Mask(err)
 	}
 
-	var response KubeconfigResponse
-	err = json.Unmarshal(ignoreNonJSON(output.Bytes()), &response)
-	if err != nil {
-		return "", microerror.Mask(err)
-	}
-
-	// TODO: Do something useful here or remove it
-	if response.Result != "ok" {
-		fmt.Println("something went wrong creating kubeconfig")
-		fmt.Println(output)
-	}
-
-	return response.Kubeconfig, nil
+	return nil
 }
 
 func (c *Client) ListClusters(ctx context.Context) ([]ClusterEntry, error) {

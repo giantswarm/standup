@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Modified `gsctl` execution to use the binary from the current `$PATH`.
 - Use `gsctl` version 0.24.0
+- Let `gsctl` write the kubeconfig directly
 
 ### Removed
 
