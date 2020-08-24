@@ -1,25 +1,22 @@
-# Need to build a branch of gsctl until changes are merged
-FROM quay.io/giantswarm/golang:1.14.7 AS gsctl
-RUN git clone https://github.com/giantswarm/gsctl.git
-WORKDIR /go/gsctl
-RUN CGO_ENABLED=0 go build
+FROM quay.io/giantswarm/alpine:3.12 AS binaries
 
-FROM quay.io/giantswarm/alpine:3.12 AS kubectl
-ARG VERSION=v1.18.8
-RUN apk add --no-cache ca-certificates \
-    && apk add --update -t deps curl \
-    && curl https://storage.googleapis.com/kubernetes-release/release/$VERSION/bin/linux/amd64/kubectl -o /usr/local/bin/kubectl \
-    && chmod +x /usr/local/bin/kubectl
+ARG KUBECTL_VERSION=1.18.8
+ARG GSCTL_VERSION=0.24.0
 
-# Use the giantswarm alpine again when gsctl changes are merged
+RUN apk add --no-cache ca-certificates curl \
+    && mkdir -p /binaries \
+    && curl -SL https://storage.googleapis.com/kubernetes-release/release/v${KUBECTL_VERSION}/bin/linux/amd64/kubectl -o /binaries/kubectl \
+    && curl -SL https://github.com/giantswarm/gsctl/releases/download/${GSCTL_VERSION}/gsctl-${GSCTL_VERSION}-linux-amd64.tar.gz | \
+       tar -C /binaries --strip-components 1 -xvzf - gsctl-${GSCTL_VERSION}-linux-amd64/gsctl \
+    && chmod +x /binaries/*
+
 FROM quay.io/giantswarm/alpine:3.11-giantswarm as base
 
 USER root
 RUN apk add --no-cache git
 
 USER giantswarm
-COPY --from=gsctl /go/gsctl/gsctl /usr/bin/gsctl
-COPY --from=kubectl /usr/local/bin/kubectl /usr/bin/kubectl
-ADD ./standup /usr/local/bin/standup
+COPY --from=binaries /binaries/* /usr/bin/
+COPY ./standup /usr/local/bin/standup
 
 ENTRYPOINT ["standup"]
