@@ -179,9 +179,6 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 				if err != nil {
 					return microerror.Mask(err)
 				}
-				provider, _ = filepath.Split(releasePath)
-				provider, _ = filepath.Split(strings.TrimSuffix(provider, "/"))
-				provider = strings.TrimSuffix(provider, "/")
 				releasePath = filepath.Join(r.flag.Releases, releasePath)
 			}
 		}
