@@ -19,7 +19,7 @@ import (
 	"github.com/giantswarm/micrologger"
 	"github.com/spf13/cobra"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/yaml"
 
 	"github.com/giantswarm/standup/pkg/gsclient"
@@ -122,42 +122,38 @@ func findNewRelease(diff string) (releasePath string, provider string, err error
 	return
 }
 
+type ProviderConfig struct {
+	Context  string `json:"context"`
+	Endpoint string `json:"endpoint"`
+	Username string `json:"username"`
+	Password string `json:"password"`
+	Token    string `json:"token"`
+}
+
 func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
-	// Create a GS API client for managing tenant clusters
-	var gsClient *gsclient.Client
-	{
-		c := gsclient.Config{
-			Logger: r.logger,
-
-			Endpoint: r.flag.Endpoint,
-			Token:    r.flag.Token,
-		}
-
-		var err error
-		gsClient, err = gsclient.New(c)
-		if err != nil {
-			return microerror.Mask(err)
-		}
-	}
-
-	// Create REST config for the control plane
-	var restConfig *rest.Config
-	if r.flag.InCluster {
-		var err error
-		restConfig, err = rest.InClusterConfig()
-		if err != nil {
-			return microerror.Mask(err)
-		}
-	}
-
-	// Create clients for the control plane
-	k8sClient, err := k8sclient.NewClients(k8sclient.ClientsConfig{
-		Logger:         r.logger,
-		KubeConfigPath: r.flag.Kubeconfig,
-		RestConfig:     restConfig,
-	})
+	configData, err := ioutil.ReadFile(r.flag.Config)
 	if err != nil {
 		return microerror.Mask(err)
+	}
+	providerConfigs := map[string]ProviderConfig{}
+	err = yaml.UnmarshalStrict(configData, &providerConfigs)
+	if err != nil {
+		return microerror.Mask(err)
+	}
+
+	if len(providerConfigs) == 0 {
+		return microerror.Maskf(invalidConfigError, "no provider configs found in %#q", r.flag.Config)
+	}
+	for provider, config := range providerConfigs {
+		if config.Context == "" {
+			return microerror.Maskf(invalidConfigError, "missing context for provider %#q", provider)
+		}
+		if config.Endpoint == "" {
+			return microerror.Maskf(invalidConfigError, "missing endpoint for provider %#q", provider)
+		}
+		if config.Token == "" && (config.Username == "" || config.Password == "") {
+			return microerror.Maskf(invalidConfigError, "missing token or username/password for provider %#q", provider)
+		}
 	}
 
 	var release v1alpha1.Release
@@ -183,6 +179,9 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 				if err != nil {
 					return microerror.Mask(err)
 				}
+				provider, _ := filepath.Split(releasePath)
+				provider, _ = filepath.Split(strings.TrimSuffix(provider, "/"))
+				provider = strings.TrimSuffix(provider, "/")
 				releasePath = filepath.Join(r.flag.Releases, releasePath)
 			}
 		}
@@ -210,6 +209,56 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 			release.Labels = map[string]string{}
 		}
 		release.Labels["giantswarm.io/testing"] = "true"
+	}
+
+	providerConfig, ok := providerConfigs[provider]
+	if !ok {
+		return microerror.Mask(fmt.Errorf("missing configuration for provider %#q", provider))
+	}
+
+	// Create a GS API client for managing tenant clusters
+	var gsClient *gsclient.Client
+	{
+		c := gsclient.Config{
+			Logger: r.logger,
+
+			Endpoint: providerConfig.Endpoint,
+			Username: providerConfig.Username,
+			Password: providerConfig.Password,
+			Token:    providerConfig.Token,
+		}
+
+		var err error
+		gsClient, err = gsclient.New(c)
+		if err != nil {
+			return microerror.Mask(err)
+		}
+	}
+
+	if providerConfig.Token == "" {
+		err = gsClient.Authenticate(ctx)
+		if err != nil {
+			return microerror.Mask(err)
+		}
+	}
+
+	// Create REST config for the control plane
+	restConfig, err := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
+		&clientcmd.ClientConfigLoadingRules{ExplicitPath: r.flag.Kubeconfig},
+		&clientcmd.ConfigOverrides{
+			CurrentContext: providerConfig.Context,
+		}).ClientConfig()
+	if err != nil {
+		return microerror.Mask(err)
+	}
+
+	// Create clients for the control plane
+	k8sClient, err := k8sclient.NewClients(k8sclient.ClientsConfig{
+		Logger:     r.logger,
+		RestConfig: restConfig,
+	})
+	if err != nil {
+		return microerror.Mask(err)
 	}
 
 	// Create the Release CR

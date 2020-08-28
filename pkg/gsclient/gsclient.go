@@ -18,11 +18,15 @@ type Config struct {
 
 	// Installations configuration
 	Endpoint string
+	Username string
+	Password string
 	Token    string
 }
 
 type Client struct {
 	endpoint string
+	username string
+	password string
 	token    string
 }
 
@@ -44,19 +48,10 @@ type ClusterEntry struct {
 }
 
 const (
-	CreationResultCreated          = "created"
 	CreationResultError            = "error"
 	CreationResultCreatedWithError = "created-with-errors"
 	DeletionResultScheduled        = "deletion scheduled"
 )
-
-var providers = []string{
-	"aws",
-}
-
-func AllProviders() []string {
-	return providers
-}
 
 func IsValidRelease(candidate string) bool {
 	_, err := semver.NewVersion(candidate)
@@ -68,8 +63,8 @@ func New(config Config) (*Client, error) {
 		return nil, microerror.Maskf(invalidConfigError, "%T.Logger must not be empty", config)
 	}
 
-	if config.Token == "" {
-		return nil, microerror.Maskf(invalidConfigError, "%T.Token must not be empty", config)
+	if config.Token == "" && (config.Username == "" || config.Password == "") {
+		return nil, microerror.Maskf(invalidConfigError, "%T.Token must not be empty if a %T.Username and %T.Password are not specified", config, config, config)
 	}
 
 	if config.Endpoint == "" {
@@ -78,23 +73,24 @@ func New(config Config) (*Client, error) {
 
 	client := Client{
 		endpoint: config.Endpoint,
+		username: config.Username,
+		password: config.Password,
 		token:    config.Token,
 	}
 
 	return &client, nil
 }
 
-func (c *Client) runWithGsctl(args string) (bytes.Buffer, error) {
-	argsArr := strings.Fields(args)
-
-	// Add additional arguments from our client
-	clientArgs := fmt.Sprintf("--endpoint=%s --auth-token=%s", c.endpoint, c.token)
-	argsArr = append(argsArr, strings.Fields(clientArgs)...)
+func (c *Client) runWithGsctl(ctx context.Context, args ...string) (bytes.Buffer, error) {
+	args = append(args, "--endpoint", c.endpoint)
+	if c.token != "" {
+		args = append(args, "--auth-token", c.token)
+	}
 
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 
-	gsctlCmd := exec.Command("gsctl", argsArr...)
+	gsctlCmd := exec.CommandContext(ctx, "gsctl", args...)
 	gsctlCmd.Stdout = &stdout
 	gsctlCmd.Stderr = &stderr
 
@@ -108,10 +104,18 @@ func (c *Client) runWithGsctl(args string) (bytes.Buffer, error) {
 	return stdout, nil
 }
 
+func (c *Client) Authenticate(ctx context.Context) error {
+	_, err := c.runWithGsctl(ctx, "gsctl", "login", "--username", c.username, "--password", c.password)
+	if err != nil {
+		return microerror.Mask(err)
+	}
+	return nil
+}
+
 func (c *Client) CreateCluster(ctx context.Context, releaseVersion string) (string, error) {
 
 	// TODO: extract and structure all these hardcoded values
-	output, err := c.runWithGsctl("--output=json create cluster --owner conformance-testing --name " + releaseVersion + " --release " + releaseVersion)
+	output, err := c.runWithGsctl(ctx, "--output=json", "create", "cluster", "--owner", "conformance-testing", "--name", releaseVersion, "--release", releaseVersion)
 	if err != nil {
 		return "", microerror.Mask(err)
 	}
@@ -134,7 +138,7 @@ func (c *Client) CreateCluster(ctx context.Context, releaseVersion string) (stri
 func (c *Client) DeleteCluster(ctx context.Context, clusterID string) error {
 
 	// TODO: extract and structure all these hardcoded values
-	output, err := c.runWithGsctl(fmt.Sprintf("--output=json delete cluster %s", clusterID))
+	output, err := c.runWithGsctl(ctx, "--output=json", "delete", "cluster", clusterID)
 	if err != nil {
 		return microerror.Mask(err)
 	}
@@ -153,11 +157,7 @@ func (c *Client) DeleteCluster(ctx context.Context, clusterID string) error {
 }
 
 func (c *Client) CreateKubeconfig(ctx context.Context, clusterID, kubeconfigPath string) error {
-
-	// TODO: extract and structure all these hardcoded values
-	args := fmt.Sprintf("create kubeconfig --cluster=%s --certificate-organizations system:masters --force --self-contained %s", clusterID, kubeconfigPath)
-
-	_, err := c.runWithGsctl(args)
+	_, err := c.runWithGsctl(ctx, "create", "kubeconfig", "--cluster", clusterID, "--certificate-organizations", "system:masters", "--force", "--self-contained", kubeconfigPath)
 	if err != nil {
 		return microerror.Mask(err)
 	}
@@ -166,9 +166,7 @@ func (c *Client) CreateKubeconfig(ctx context.Context, clusterID, kubeconfigPath
 }
 
 func (c *Client) ListClusters(ctx context.Context) ([]ClusterEntry, error) {
-	// TODO: extract and structure all these hardcoded values
-	args := "--output=json list clusters --show-deleting"
-	output, err := c.runWithGsctl(args)
+	output, err := c.runWithGsctl(ctx, "--output=json", "list", "clusters", "--show-deleting")
 	if err != nil {
 		return nil, microerror.Mask(err)
 	}
