@@ -82,15 +82,15 @@ func (r *runner) run(ctx context.Context, cmd *cobra.Command, args []string) err
 	// Clean up
 
 	// Get release version of tenant cluster
-	releaseVersion, err := gsClient.GetClusterReleaseVersion(context.Background(), r.flag.ClusterID)
+	releaseVersion, err := gsClient.GetClusterReleaseVersion(ctx, r.flag.ClusterID)
 	if err != nil {
 		return microerror.Mask(err)
 	}
 
-	r.logger.LogCtx(context.Background(), "message", "beginning teardown")
+	r.logger.LogCtx(ctx, "message", "beginning teardown")
 
-	r.logger.LogCtx(context.Background(), "message", "deleting cluster")
-	err = gsClient.DeleteCluster(context.Background(), r.flag.ClusterID)
+	r.logger.LogCtx(ctx, "message", "deleting cluster")
+	err = gsClient.DeleteCluster(ctx, r.flag.ClusterID)
 	if err != nil {
 		return microerror.Mask(err)
 	}
@@ -98,32 +98,32 @@ func (r *runner) run(ctx context.Context, cmd *cobra.Command, args []string) err
 	// Wait for the cluster to be deleted
 	{
 		o := func() error {
-			clusters, err := gsClient.ListClusters(context.Background())
+			clusters, err := gsClient.ListClusters(ctx)
 			if err != nil {
 				return backoff.Permanent(err)
 			}
 			for _, cluster := range clusters {
 				if cluster.ID == r.flag.ClusterID {
-					r.logger.LogCtx(context.Background(), "message", "waiting for cluster deletion")
+					r.logger.LogCtx(ctx, "message", "waiting for cluster deletion")
 					return errors.New("waiting for cluster deletion")
 				}
 			}
 			return nil
 		}
-
-		b := backoff.NewMaxRetries(100, 20*time.Second)
+		// Retry basically forever, the tekton task will determine maximum runtime.
+		b := backoff.NewMaxRetries(^uint64(0), 20*time.Second)
 
 		err = backoff.Retry(o, b)
 		if err != nil {
 			return microerror.Mask(err)
 		}
 	}
-	r.logger.LogCtx(context.Background(), "message", "deleted cluster")
+	r.logger.LogCtx(ctx, "message", "deleted cluster")
 
 	// Delete the Release CR
-	r.logger.LogCtx(context.Background(), "message", "deleting release CR")
+	r.logger.LogCtx(ctx, "message", "deleting release CR")
 	backgroundDeletion := v1.DeletionPropagation("Background")
-	err = k8sClient.G8sClient().ReleaseV1alpha1().Releases().Delete(context.Background(), releaseVersion, v1.DeleteOptions{
+	err = k8sClient.G8sClient().ReleaseV1alpha1().Releases().Delete(ctx, releaseVersion, v1.DeleteOptions{
 		PropagationPolicy: &backgroundDeletion,
 	})
 	if err != nil {
@@ -133,25 +133,25 @@ func (r *runner) run(ctx context.Context, cmd *cobra.Command, args []string) err
 	// Wait for the release to be deleted
 	{
 		o := func() error {
-			_, err := k8sClient.G8sClient().ReleaseV1alpha1().Releases().Get(context.Background(), releaseVersion, v1.GetOptions{})
+			_, err := k8sClient.G8sClient().ReleaseV1alpha1().Releases().Get(ctx, releaseVersion, v1.GetOptions{})
 			if errors2.IsNotFound(err) {
 				return nil
 			} else if err != nil {
 				return backoff.Permanent(err)
 			}
-			r.logger.LogCtx(context.Background(), "message", "waiting for release deletion")
+			r.logger.LogCtx(ctx, "message", "waiting for release deletion")
 			return errors.New("waiting for release deletion")
 		}
-
-		b := backoff.NewMaxRetries(10, 20*time.Second)
+		// Retry basically forever, the tekton task will determine maximum runtime.
+		b := backoff.NewMaxRetries(^uint64(0), 20*time.Second)
 
 		err = backoff.Retry(o, b)
 		if err != nil {
 			return microerror.Mask(err)
 		}
 	}
-	r.logger.LogCtx(context.Background(), "message", "deleted release CR")
-	r.logger.LogCtx(context.Background(), "message", "teardown complete")
+	r.logger.LogCtx(ctx, "message", "deleted release CR")
+	r.logger.LogCtx(ctx, "message", "teardown complete")
 
 	return nil
 }
