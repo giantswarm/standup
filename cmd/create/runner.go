@@ -281,8 +281,8 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 
 			return nil
 		}
-
-		b := backoff.NewMaxRetries(30, 20*time.Second)
+		// Retry basically forever, the tekton task will determine maximum runtime.
+		b := backoff.NewMaxRetries(^uint64(0), 20*time.Second)
 
 		err = backoff.Retry(o, b)
 		if err != nil {
@@ -311,8 +311,8 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 			}
 			return nil
 		}
-
-		b := backoff.NewMaxRetries(10, 20*time.Second)
+		// Retry basically forever, the tekton task will determine maximum runtime.
+		b := backoff.NewMaxRetries(^uint64(0), 20*time.Second)
 
 		err = backoff.Retry(o, b)
 		if err != nil {
