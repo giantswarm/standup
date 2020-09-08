@@ -13,8 +13,9 @@ import (
 	"github.com/spf13/cobra"
 	errors2 "k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 
+	"github.com/giantswarm/standup/pkg/config"
 	"github.com/giantswarm/standup/pkg/gsclient"
 )
 
@@ -41,15 +42,26 @@ func (r *runner) Run(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func (r *runner) run(ctx context.Context, cmd *cobra.Command, args []string) error {
+func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
+	var providerConfig *config.ProviderConfig
+	{
+		var err error
+		providerConfig, err = config.LoadProviderConfig(r.flag.Config, r.flag.Provider)
+		if err != nil {
+			return microerror.Mask(err)
+		}
+	}
+
 	// Create a GS API client for managing tenant clusters
 	var gsClient *gsclient.Client
 	{
 		c := gsclient.Config{
 			Logger: r.logger,
 
-			Endpoint: r.flag.Endpoint,
-			Token:    r.flag.Token,
+			Endpoint: providerConfig.Endpoint,
+			Username: providerConfig.Username,
+			Password: providerConfig.Context,
+			Token:    providerConfig.Token,
 		}
 
 		var err error
@@ -60,20 +72,19 @@ func (r *runner) run(ctx context.Context, cmd *cobra.Command, args []string) err
 	}
 
 	// Create REST config for the control plane
-	var restConfig *rest.Config
-	if r.flag.InCluster {
-		var err error
-		restConfig, err = rest.InClusterConfig()
-		if err != nil {
-			return microerror.Mask(err)
-		}
+	restConfig, err := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
+		&clientcmd.ClientConfigLoadingRules{ExplicitPath: r.flag.Kubeconfig},
+		&clientcmd.ConfigOverrides{
+			CurrentContext: providerConfig.Context,
+		}).ClientConfig()
+	if err != nil {
+		return microerror.Mask(err)
 	}
 
 	// Create clients for the control plane
 	k8sClient, err := k8sclient.NewClients(k8sclient.ClientsConfig{
-		Logger:         r.logger,
-		KubeConfigPath: r.flag.Kubeconfig,
-		RestConfig:     restConfig,
+		Logger:     r.logger,
+		RestConfig: restConfig,
 	})
 	if err != nil {
 		return microerror.Mask(err)

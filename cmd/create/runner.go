@@ -22,6 +22,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/yaml"
 
+	"github.com/giantswarm/standup/pkg/config"
 	"github.com/giantswarm/standup/pkg/gsclient"
 )
 
@@ -122,40 +123,7 @@ func findNewRelease(diff string) (releasePath string, provider string, err error
 	return
 }
 
-type ProviderConfig struct {
-	Context  string `json:"context"`
-	Endpoint string `json:"endpoint"`
-	Username string `json:"username"`
-	Password string `json:"password"`
-	Token    string `json:"token"`
-}
-
 func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
-	configData, err := ioutil.ReadFile(r.flag.Config)
-	if err != nil {
-		return microerror.Mask(err)
-	}
-	providerConfigs := map[string]ProviderConfig{}
-	err = yaml.UnmarshalStrict(configData, &providerConfigs)
-	if err != nil {
-		return microerror.Mask(err)
-	}
-
-	if len(providerConfigs) == 0 {
-		return microerror.Maskf(invalidConfigError, "no provider configs found in %#q", r.flag.Config)
-	}
-	for provider, config := range providerConfigs {
-		if config.Context == "" {
-			return microerror.Maskf(invalidConfigError, "missing context for provider %#q", provider)
-		}
-		if config.Endpoint == "" {
-			return microerror.Maskf(invalidConfigError, "missing endpoint for provider %#q", provider)
-		}
-		if config.Token == "" && (config.Username == "" || config.Password == "") {
-			return microerror.Maskf(invalidConfigError, "missing token or username/password for provider %#q", provider)
-		}
-	}
-
 	var release v1alpha1.Release
 	var provider string
 	var releaseVersion string
@@ -208,9 +176,13 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 		release.Labels["giantswarm.io/testing"] = "true"
 	}
 
-	providerConfig, ok := providerConfigs[provider]
-	if !ok {
-		return microerror.Mask(fmt.Errorf("missing configuration for provider %#q", provider))
+	var providerConfig *config.ProviderConfig
+	{
+		var err error
+		providerConfig, err = config.LoadProviderConfig(r.flag.Config, provider)
+		if err != nil {
+			return microerror.Mask(err)
+		}
 	}
 
 	// Create a GS API client for managing tenant clusters
@@ -221,19 +193,12 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 
 			Endpoint: providerConfig.Endpoint,
 			Username: providerConfig.Username,
-			Password: providerConfig.Password,
+			Password: providerConfig.Context,
 			Token:    providerConfig.Token,
 		}
 
 		var err error
 		gsClient, err = gsclient.New(c)
-		if err != nil {
-			return microerror.Mask(err)
-		}
-	}
-
-	if providerConfig.Token == "" {
-		err = gsClient.Authenticate(ctx)
 		if err != nil {
 			return microerror.Mask(err)
 		}
@@ -299,11 +264,12 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 	}
 	r.logger.LogCtx(ctx, "message", fmt.Sprintf("created cluster %s", clusterID))
 
-	r.logger.LogCtx(ctx, "message", fmt.Sprintf("creating and writing kubeconfig for cluster %s to path %s", clusterID, r.flag.OutputKubeconfig))
+	kubeconfigPath := filepath.Join(r.flag.Output, "kubeconfig")
+	r.logger.LogCtx(ctx, "message", fmt.Sprintf("creating and writing kubeconfig for cluster %s to path %s", clusterID, kubeconfigPath))
 	{
 		o := func() error {
 			// Create a keypair and kubeconfig for the new tenant cluster
-			err = gsClient.CreateKubeconfig(ctx, clusterID, r.flag.OutputKubeconfig)
+			err = gsClient.CreateKubeconfig(ctx, clusterID, kubeconfigPath)
 			if err != nil {
 				// TODO: check to see if it's a permanent error or the kubeconfig just isn't ready yet
 				r.logger.LogCtx(ctx, "message", "error creating kubeconfig", "error", err)
@@ -320,8 +286,16 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 		}
 	}
 
-	r.logger.LogCtx(ctx, "message", fmt.Sprintf("writing cluster ID to path %s", r.flag.OutputClusterID))
-	err = ioutil.WriteFile(r.flag.OutputClusterID, []byte(clusterID), 0644)
+	clusterIDPath := filepath.Join(r.flag.Output, "cluster-id")
+	r.logger.LogCtx(ctx, "message", fmt.Sprintf("writing cluster ID to path %s", clusterIDPath))
+	err = ioutil.WriteFile(clusterIDPath, []byte(clusterID), 0644)
+	if err != nil {
+		return microerror.Mask(err)
+	}
+
+	providerPath := filepath.Join(r.flag.Output, "provider")
+	r.logger.LogCtx(ctx, "message", fmt.Sprintf("writing provider to path %s", providerPath))
+	err = ioutil.WriteFile(providerPath, []byte(provider), 0644)
 	if err != nil {
 		return microerror.Mask(err)
 	}
