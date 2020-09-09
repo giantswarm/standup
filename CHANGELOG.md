@@ -20,8 +20,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Modified `gsctl` execution to use the binary from the current `$PATH`.
-- Use `gsctl` version 0.24.0
-- Let `gsctl` write the kubeconfig directly
+- Use `gsctl` version 0.24.0.
+- Let `gsctl` write the kubeconfig directly.
+- Modified to be used in tenant clusters against external control planes.
 
 ### Removed
 
