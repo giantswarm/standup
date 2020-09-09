@@ -19,3 +19,12 @@ var invalidFlagError = &microerror.Error{
 func IsInvalidFlag(err error) bool {
 	return microerror.Cause(err) == invalidFlagError
 }
+
+var notYetDeletedError = &microerror.Error{
+	Kind: "notYetDeletedError",
+}
+
+// IsNotYetDeleted asserts notYetDeletedError.
+func IsNotYetDeleted(err error) bool {
+	return microerror.Cause(err) == notYetDeletedError
+}

@@ -10,9 +10,9 @@ import (
 type ProviderConfig struct {
 	Context  string `json:"context"`
 	Endpoint string `json:"endpoint"`
-	Username string `json:"username"`
 	Password string `json:"password"`
 	Token    string `json:"token"`
+	Username string `json:"username"`
 }
 
 func LoadProviderConfig(path string, provider string) (*ProviderConfig, error) {

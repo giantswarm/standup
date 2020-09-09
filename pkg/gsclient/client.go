@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"os/exec"
-	"strings"
 
 	"github.com/giantswarm/microerror"
 	"github.com/giantswarm/micrologger"
@@ -15,16 +14,16 @@ type Config struct {
 	Logger micrologger.Logger
 
 	Endpoint string
-	Username string
 	Password string
 	Token    string
+	Username string
 }
 
 type Client struct {
 	endpoint string
-	username string
 	password string
 	token    string
+	username string
 }
 
 func New(config Config) (*Client, error) {
@@ -58,6 +57,19 @@ func New(config Config) (*Client, error) {
 	return &client, nil
 }
 
+func (c *Client) authenticate(ctx context.Context) error {
+	if c.token != "" {
+		return nil
+	}
+
+	_, err := c.runWithGsctl(ctx, "gsctl", "login", "--username", c.username, "--password", c.password)
+	if err != nil {
+		return microerror.Mask(err)
+	}
+
+	return nil
+}
+
 func (c *Client) runWithGsctl(ctx context.Context, args ...string) (bytes.Buffer, error) {
 	args = append(args, "--endpoint", c.endpoint)
 	if c.token != "" {
@@ -79,35 +91,4 @@ func (c *Client) runWithGsctl(ctx context.Context, args ...string) (bytes.Buffer
 	}
 
 	return stdout, nil
-}
-
-func (c *Client) Authenticate(ctx context.Context) error {
-	_, err := c.runWithGsctl(ctx, "gsctl", "login", "--username", c.username, "--password", c.password)
-	if err != nil {
-		return microerror.Mask(err)
-	}
-	return nil
-}
-
-func ignoreNonJSON(input []byte) []byte {
-	curlyBracketIndex := strings.Index(string(input), "{")
-	squareBracketIndex := strings.Index(string(input), "[")
-
-	if curlyBracketIndex == -1 {
-		// Input is not a JSON
-		return nil
-	}
-
-	if squareBracketIndex == -1 {
-		// No arrays, JSON starts with "{"
-		return input[curlyBracketIndex : strings.LastIndex(string(input), "}")+1]
-	}
-
-	if curlyBracketIndex < squareBracketIndex {
-		// JSON starts with "{"
-		return input[curlyBracketIndex : strings.LastIndex(string(input), "}")+1]
-	}
-
-	// JSON starts with "["
-	return input[squareBracketIndex : strings.LastIndex(string(input), "]")+1]
 }

@@ -2,7 +2,6 @@ package cleanup
 
 import (
 	"context"
-	"errors"
 	"io"
 	"time"
 
@@ -11,8 +10,9 @@ import (
 	"github.com/giantswarm/microerror"
 	"github.com/giantswarm/micrologger"
 	"github.com/spf13/cobra"
-	errors2 "k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 
 	"github.com/giantswarm/standup/pkg/config"
@@ -72,42 +72,52 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 	}
 
 	// Create REST config for the control plane
-	restConfig, err := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
-		&clientcmd.ClientConfigLoadingRules{ExplicitPath: r.flag.Kubeconfig},
-		&clientcmd.ConfigOverrides{
-			CurrentContext: providerConfig.Context,
-		}).ClientConfig()
-	if err != nil {
-		return microerror.Mask(err)
+	var restConfig *rest.Config
+	{
+		var err error
+		restConfig, err = clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
+			&clientcmd.ClientConfigLoadingRules{ExplicitPath: r.flag.Kubeconfig},
+			&clientcmd.ConfigOverrides{
+				CurrentContext: providerConfig.Context,
+			}).ClientConfig()
+		if err != nil {
+			return microerror.Mask(err)
+		}
 	}
 
-	// Create clients for the control plane
-	k8sClient, err := k8sclient.NewClients(k8sclient.ClientsConfig{
-		Logger:     r.logger,
-		RestConfig: restConfig,
-	})
-	if err != nil {
-		return microerror.Mask(err)
+	// Create k8s clients for the control plane
+	var k8sClient k8sclient.Interface
+	{
+		var err error
+		k8sClient, err = k8sclient.NewClients(k8sclient.ClientsConfig{
+			Logger:     r.logger,
+			RestConfig: restConfig,
+		})
+		if err != nil {
+			return microerror.Mask(err)
+		}
 	}
-
-	// Clean up
 
 	// Get release version of tenant cluster
-	releaseVersion, err := gsClient.GetClusterReleaseVersion(ctx, r.flag.ClusterID)
-	if err != nil {
-		return microerror.Mask(err)
+	var releaseVersion string
+	{
+		var err error
+		releaseVersion, err = gsClient.GetClusterReleaseVersion(ctx, r.flag.ClusterID)
+		if err != nil {
+			return microerror.Mask(err)
+		}
 	}
 
 	r.logger.LogCtx(ctx, "message", "beginning teardown")
 
 	r.logger.LogCtx(ctx, "message", "deleting cluster")
-	err = gsClient.DeleteCluster(ctx, r.flag.ClusterID)
-	if err != nil {
-		return microerror.Mask(err)
-	}
-
-	// Wait for the cluster to be deleted
 	{
+		err := gsClient.DeleteCluster(ctx, r.flag.ClusterID)
+		if err != nil {
+			return microerror.Mask(err)
+		}
+
+		// Wait for the cluster to be deleted
 		o := func() error {
 			clusters, err := gsClient.ListClusters(ctx)
 			if err != nil {
@@ -116,7 +126,7 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 			for _, cluster := range clusters {
 				if cluster.ID == r.flag.ClusterID {
 					r.logger.LogCtx(ctx, "message", "waiting for cluster deletion")
-					return errors.New("waiting for cluster deletion")
+					return microerror.Mask(notYetDeletedError)
 				}
 			}
 			return nil
@@ -133,25 +143,25 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 
 	// Delete the Release CR
 	r.logger.LogCtx(ctx, "message", "deleting release CR")
-	backgroundDeletion := v1.DeletionPropagation("Background")
-	err = k8sClient.G8sClient().ReleaseV1alpha1().Releases().Delete(ctx, releaseVersion, v1.DeleteOptions{
-		PropagationPolicy: &backgroundDeletion,
-	})
-	if err != nil {
-		return microerror.Mask(err)
-	}
-
-	// Wait for the release to be deleted
 	{
+		backgroundDeletion := v1.DeletionPropagation("Background")
+		err := k8sClient.G8sClient().ReleaseV1alpha1().Releases().Delete(ctx, releaseVersion, v1.DeleteOptions{
+			PropagationPolicy: &backgroundDeletion,
+		})
+		if err != nil {
+			return microerror.Mask(err)
+		}
+
+		// Wait for the release to be deleted
 		o := func() error {
 			_, err := k8sClient.G8sClient().ReleaseV1alpha1().Releases().Get(ctx, releaseVersion, v1.GetOptions{})
-			if errors2.IsNotFound(err) {
+			if apierrors.IsNotFound(err) {
 				return nil
 			} else if err != nil {
 				return backoff.Permanent(err)
 			}
 			r.logger.LogCtx(ctx, "message", "waiting for release deletion")
-			return errors.New("waiting for release deletion")
+			return microerror.Mask(notYetDeletedError)
 		}
 		// Retry basically forever, the tekton task will determine maximum runtime.
 		b := backoff.NewMaxRetries(^uint64(0), 20*time.Second)

@@ -10,7 +10,7 @@ A       aws/v13.0.0/release.diff
 A       aws/v13.0.0/release.yaml`
 
 func Test_findNewRelease(t *testing.T) {
-	path, provider, err := findNewRelease(diff)
+	path, provider, err := findReleaseInDiff(diff)
 	if err != nil {
 		t.Fatal(err)
 	}

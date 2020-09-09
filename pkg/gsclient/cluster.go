@@ -11,6 +11,10 @@ import (
 )
 
 func (c *Client) CreateCluster(ctx context.Context, releaseVersion string) (string, error) {
+	err := c.authenticate(ctx)
+	if err != nil {
+		return "", microerror.Mask(err)
+	}
 
 	// TODO: extract and structure all these hardcoded values
 	output, err := c.runWithGsctl(ctx, "--output=json", "create", "cluster", "--owner", "conformance-testing", "--name", releaseVersion, "--release", releaseVersion)
@@ -19,7 +23,7 @@ func (c *Client) CreateCluster(ctx context.Context, releaseVersion string) (stri
 	}
 
 	var response CreationResponse
-	err = json.Unmarshal(ignoreNonJSON(output.Bytes()), &response)
+	err = json.Unmarshal(output.Bytes(), &response)
 	if err != nil {
 		return "", microerror.Mask(err)
 	}
@@ -34,6 +38,10 @@ func (c *Client) CreateCluster(ctx context.Context, releaseVersion string) (stri
 }
 
 func (c *Client) DeleteCluster(ctx context.Context, clusterID string) error {
+	err := c.authenticate(ctx)
+	if err != nil {
+		return microerror.Mask(err)
+	}
 
 	// TODO: extract and structure all these hardcoded values
 	output, err := c.runWithGsctl(ctx, "--output=json", "delete", "cluster", clusterID)
@@ -42,7 +50,7 @@ func (c *Client) DeleteCluster(ctx context.Context, clusterID string) error {
 	}
 
 	var response DeletionResponse
-	err = json.Unmarshal(ignoreNonJSON(output.Bytes()), &response)
+	err = json.Unmarshal(output.Bytes(), &response)
 	if err != nil {
 		return microerror.Mask(err)
 	}
@@ -54,31 +62,11 @@ func (c *Client) DeleteCluster(ctx context.Context, clusterID string) error {
 	return nil
 }
 
-func (c *Client) CreateKubeconfig(ctx context.Context, clusterID, kubeconfigPath string) error {
-	_, err := c.runWithGsctl(ctx, "create", "kubeconfig", "--cluster", clusterID, "--certificate-organizations", "system:masters", "--force", "--self-contained", kubeconfigPath)
-	if err != nil {
-		return microerror.Mask(err)
-	}
-
-	return nil
-}
-
-func (c *Client) ListClusters(ctx context.Context) ([]ClusterEntry, error) {
-	output, err := c.runWithGsctl(ctx, "--output=json", "list", "clusters", "--show-deleting")
-	if err != nil {
-		return nil, microerror.Mask(err)
-	}
-
-	var response []ClusterEntry
-	err = json.Unmarshal(ignoreNonJSON(output.Bytes()), &response)
-	if err != nil {
-		return nil, microerror.Mask(err)
-	}
-
-	return response, nil
-}
-
 func (c *Client) GetClusterReleaseVersion(ctx context.Context, clusterID string) (string, error) {
+	err := c.authenticate(ctx)
+	if err != nil {
+		return "", microerror.Mask(err)
+	}
 
 	response, err := c.ListClusters(ctx)
 	if err != nil {
@@ -93,4 +81,24 @@ func (c *Client) GetClusterReleaseVersion(ctx context.Context, clusterID string)
 	}
 
 	return "", microerror.Maskf(clusterNotFoundError, fmt.Sprintf("cluster %s was not found", clusterID))
+}
+
+func (c *Client) ListClusters(ctx context.Context) ([]ClusterEntry, error) {
+	err := c.authenticate(ctx)
+	if err != nil {
+		return nil, microerror.Mask(err)
+	}
+
+	output, err := c.runWithGsctl(ctx, "--output=json", "list", "clusters", "--show-deleting")
+	if err != nil {
+		return nil, microerror.Mask(err)
+	}
+
+	var response []ClusterEntry
+	err = json.Unmarshal(output.Bytes(), &response)
+	if err != nil {
+		return nil, microerror.Mask(err)
+	}
+
+	return response, nil
 }

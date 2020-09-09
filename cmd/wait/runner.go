@@ -2,7 +2,6 @@ package wait
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -39,6 +38,16 @@ func (r *runner) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	return nil
+}
+
+func labelsToSelector(labels map[string]string) string {
+	selector := ""
+	for key, value := range labels {
+		selector += fmt.Sprintf("%s=%s,", key, value)
+	}
+	selector = selector[:len(selector)-1] // trim trailing comma
+	return selector
+
 }
 
 func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
@@ -111,12 +120,12 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 			if nodeCount < 2 {
 				message := fmt.Sprintf("found %d registered nodes, waiting for at least 2", nodeCount)
 				r.logger.LogCtx(ctx, "message", message)
-				return microerror.Mask(errors.New(message))
+				return microerror.Mask(notReadyError)
 			}
 			if readyCount < nodeCount {
 				message := fmt.Sprintf("%d out of %d nodes ready", readyCount, nodeCount)
 				r.logger.LogCtx(ctx, "message", message)
-				return microerror.Mask(errors.New(message))
+				return microerror.Mask(notReadyError)
 			}
 			return nil
 		}
@@ -150,7 +159,7 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 			if len(services.Items) == 0 {
 				message := fmt.Sprintf("CoreDNS service not found using label selector %#q", serviceLabelSelector)
 				r.logger.LogCtx(ctx, "message", message)
-				return microerror.Mask(errors.New(message))
+				return microerror.Mask(notReadyError)
 			}
 
 			service := services.Items[0]
@@ -165,7 +174,7 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 			if len(pods.Items) == 0 {
 				message := fmt.Sprintf("CoreDNS pods not found using label selector %#q", podLabelSelector)
 				r.logger.LogCtx(ctx, "message", message)
-				return microerror.Mask(errors.New(message))
+				return microerror.Mask(notReadyError)
 			}
 
 			for _, pod := range pods.Items {
@@ -173,7 +182,7 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 					if !container.Ready {
 						message := fmt.Sprintf("CoreDNS pod container %#q not ready", container.Name)
 						r.logger.LogCtx(ctx, "message", message)
-						return microerror.Mask(errors.New(message))
+						return microerror.Mask(notReadyError)
 					}
 				}
 			}
@@ -191,14 +200,4 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 	}
 
 	return nil
-}
-
-func labelsToSelector(labels map[string]string) string {
-	selector := ""
-	for key, value := range labels {
-		selector += fmt.Sprintf("%s=%s,", key, value)
-	}
-	selector = selector[:len(selector)-1] // trim trailing comma
-	return selector
-
 }
