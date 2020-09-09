@@ -2,11 +2,9 @@ package create
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
-	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -20,8 +18,11 @@ import (
 	"github.com/spf13/cobra"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/yaml"
 
+	"github.com/giantswarm/standup/pkg/config"
+	"github.com/giantswarm/standup/pkg/git"
 	"github.com/giantswarm/standup/pkg/gsclient"
 )
 
@@ -48,61 +49,14 @@ func (r *runner) Run(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func runGit(args []string, dir string) (string, error) {
-	cmd := exec.Command("git", args...)
-	cmd.Dir = dir
-	output, err := cmd.Output()
-	if err != nil {
-		return "", microerror.Mask(err)
-	}
-	return string(output), nil
-}
-
-// Tekton checks out the current commit in detached HEAD state with --depth=1.
-// This means we need to fetch origin/master before we can determine the changed files.
-func fetchAndDiff(dir string) (string, error) {
-	{
-		// Fetch master so we can diff against it
-		argsArr := []string{
-			"fetch",
-			"origin",
-			"master",
-		}
-		_, err := runGit(argsArr, dir)
-		if err != nil {
-			return "", microerror.Mask(err)
-		}
-	}
-
-	var diff string
-	{
-		// Determine the files added in this branch not in master
-		argsArr := []string{
-			"diff",
-			"--name-status",   // only show filename and the type of change (A=added, etc.)
-			"origin/master",   // diff against the latest master
-			"--diff-filter=A", // only show added files
-			"--no-renames",    // disable rename detection so we always find new releases
-			"HEAD",            // base ref for the diff
-		}
-		var err error
-		diff, err = runGit(argsArr, dir)
-		if err != nil {
-			return "", microerror.Mask(err)
-		}
-	}
-
-	return diff, nil
-}
-
-func findNewRelease(diff string) (releasePath string, provider string, err error) {
+func findReleaseInDiff(diff string) (releasePath string, provider string, err error) {
 	{
 		lines := strings.Split(diff, "\n")
 		for _, line := range lines {
 			if strings.HasSuffix(line, "/release.yaml") {
 				fields := strings.Fields(line)
 				if len(fields) < 2 {
-					err = fmt.Errorf("incorrectly formatted diff: should look like 'A       aws/v13.0.0/release.yaml', found %s", line)
+					err = microerror.Maskf(releaseNotFoundError, "incorrectly formatted diff: should look like 'A  aws/v13.0.0/release.yaml', found %s", line)
 					return
 				}
 				releasePath = fields[1]
@@ -112,7 +66,7 @@ func findNewRelease(diff string) (releasePath string, provider string, err error
 	}
 
 	if releasePath == "" {
-		err = errors.New("no new release found in this branch")
+		err = microerror.Maskf(releaseNotFoundError, "no new release found in diff between this branch and master")
 		return
 	}
 
@@ -123,43 +77,6 @@ func findNewRelease(diff string) (releasePath string, provider string, err error
 }
 
 func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
-	// Create a GS API client for managing tenant clusters
-	var gsClient *gsclient.Client
-	{
-		c := gsclient.Config{
-			Logger: r.logger,
-
-			Endpoint: r.flag.Endpoint,
-			Token:    r.flag.Token,
-		}
-
-		var err error
-		gsClient, err = gsclient.New(c)
-		if err != nil {
-			return microerror.Mask(err)
-		}
-	}
-
-	// Create REST config for the control plane
-	var restConfig *rest.Config
-	if r.flag.InCluster {
-		var err error
-		restConfig, err = rest.InClusterConfig()
-		if err != nil {
-			return microerror.Mask(err)
-		}
-	}
-
-	// Create clients for the control plane
-	k8sClient, err := k8sclient.NewClients(k8sclient.ClientsConfig{
-		Logger:         r.logger,
-		KubeConfigPath: r.flag.Kubeconfig,
-		RestConfig:     restConfig,
-	})
-	if err != nil {
-		return microerror.Mask(err)
-	}
-
 	var release v1alpha1.Release
 	var provider string
 	var releaseVersion string
@@ -172,14 +89,21 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 				releasePath = filepath.Join(r.flag.Releases, r.flag.Provider, "/v"+r.flag.Release, "/release.yaml")
 				provider = r.flag.Provider
 			} else {
+				// Tekton checks out the current commit in detached HEAD state with --depth=1.
+				// This means we need to fetch origin/master before we can determine the changed files.
+				err := git.Fetch(r.flag.Releases)
+				if err != nil {
+					return microerror.Mask(err)
+				}
+
 				// Use "git diff" to find the release under test
-				diff, err := fetchAndDiff(r.flag.Releases)
+				diff, err := git.Diff(r.flag.Releases)
 				if err != nil {
 					return microerror.Mask(err)
 				}
 
 				// Parse the git diff to get the release file, version, and provider
-				releasePath, provider, err = findNewRelease(diff)
+				releasePath, provider, err = findReleaseInDiff(diff)
 				if err != nil {
 					return microerror.Mask(err)
 				}
@@ -212,11 +136,68 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 		release.Labels["giantswarm.io/testing"] = "true"
 	}
 
+	var providerConfig *config.ProviderConfig
+	{
+		var err error
+		providerConfig, err = config.LoadProviderConfig(r.flag.Config, provider)
+		if err != nil {
+			return microerror.Mask(err)
+		}
+	}
+
+	// Create a GS API client for managing tenant clusters
+	var gsClient *gsclient.Client
+	{
+		c := gsclient.Config{
+			Logger: r.logger,
+
+			Endpoint: providerConfig.Endpoint,
+			Username: providerConfig.Username,
+			Password: providerConfig.Context,
+			Token:    providerConfig.Token,
+		}
+
+		var err error
+		gsClient, err = gsclient.New(c)
+		if err != nil {
+			return microerror.Mask(err)
+		}
+	}
+
+	// Create REST config for the control plane
+	var restConfig *rest.Config
+	{
+		var err error
+		restConfig, err = clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
+			&clientcmd.ClientConfigLoadingRules{ExplicitPath: r.flag.Kubeconfig},
+			&clientcmd.ConfigOverrides{
+				CurrentContext: providerConfig.Context,
+			}).ClientConfig()
+		if err != nil {
+			return microerror.Mask(err)
+		}
+	}
+
+	// Create k8s clients for the control plane
+	var k8sClient k8sclient.Interface
+	{
+		var err error
+		k8sClient, err = k8sclient.NewClients(k8sclient.ClientsConfig{
+			Logger:     r.logger,
+			RestConfig: restConfig,
+		})
+		if err != nil {
+			return microerror.Mask(err)
+		}
+	}
+
 	// Create the Release CR
 	r.logger.LogCtx(ctx, "message", "creating release CR")
-	_, err = k8sClient.G8sClient().ReleaseV1alpha1().Releases().Create(ctx, &release, v1.CreateOptions{})
-	if err != nil {
-		return microerror.Mask(err)
+	{
+		_, err := k8sClient.G8sClient().ReleaseV1alpha1().Releases().Create(ctx, &release, v1.CreateOptions{})
+		if err != nil {
+			return microerror.Mask(err)
+		}
 	}
 	r.logger.LogCtx(ctx, "message", "created release CR")
 
@@ -230,15 +211,15 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 			}
 			if !toCheck.Status.Ready {
 				r.logger.LogCtx(ctx, "message", "release is not ready yet")
-				return errors.New("not ready")
+				return microerror.Mask(releaseNotReadyError)
 			}
 
 			return nil
 		}
+		// Retry basically forever, the tekton task will determine maximum runtime.
+		b := backoff.NewMaxRetries(^uint64(0), 20*time.Second)
 
-		b := backoff.NewMaxRetries(30, 20*time.Second)
-
-		err = backoff.Retry(o, b)
+		err := backoff.Retry(o, b)
 		if err != nil {
 			return microerror.Mask(err)
 		}
@@ -246,18 +227,23 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 	r.logger.LogCtx(ctx, "message", "release is ready")
 
 	// Create the cluster under test
+	var clusterID string
 	r.logger.LogCtx(ctx, "message", "creating cluster using target release")
-	clusterID, err := gsClient.CreateCluster(ctx, releaseVersion)
-	if err != nil {
-		return microerror.Mask(err)
+	{
+		var err error
+		clusterID, err = gsClient.CreateCluster(ctx, releaseVersion)
+		if err != nil {
+			return microerror.Mask(err)
+		}
 	}
 	r.logger.LogCtx(ctx, "message", fmt.Sprintf("created cluster %s", clusterID))
 
-	r.logger.LogCtx(ctx, "message", fmt.Sprintf("creating and writing kubeconfig for cluster %s to path %s", clusterID, r.flag.OutputKubeconfig))
+	kubeconfigPath := filepath.Join(r.flag.Output, "kubeconfig")
+	r.logger.LogCtx(ctx, "message", fmt.Sprintf("creating and writing kubeconfig for cluster %s to path %s", clusterID, kubeconfigPath))
 	{
 		o := func() error {
 			// Create a keypair and kubeconfig for the new tenant cluster
-			err = gsClient.CreateKubeconfig(ctx, clusterID, r.flag.OutputKubeconfig)
+			err := gsClient.CreateKubeconfig(ctx, clusterID, kubeconfigPath)
 			if err != nil {
 				// TODO: check to see if it's a permanent error or the kubeconfig just isn't ready yet
 				r.logger.LogCtx(ctx, "message", "error creating kubeconfig", "error", err)
@@ -265,19 +251,33 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 			}
 			return nil
 		}
+		// Retry basically forever, the tekton task will determine maximum runtime.
+		b := backoff.NewMaxRetries(^uint64(0), 20*time.Second)
 
-		b := backoff.NewMaxRetries(10, 20*time.Second)
-
-		err = backoff.Retry(o, b)
+		err := backoff.Retry(o, b)
 		if err != nil {
 			return microerror.Mask(err)
 		}
 	}
 
-	r.logger.LogCtx(ctx, "message", fmt.Sprintf("writing cluster ID to path %s", r.flag.OutputClusterID))
-	err = ioutil.WriteFile(r.flag.OutputClusterID, []byte(clusterID), 0644)
-	if err != nil {
-		return microerror.Mask(err)
+	// Write cluster ID to filesystem
+	{
+		clusterIDPath := filepath.Join(r.flag.Output, "cluster-id")
+		r.logger.LogCtx(ctx, "message", fmt.Sprintf("writing cluster ID to path %s", clusterIDPath))
+		err := ioutil.WriteFile(clusterIDPath, []byte(clusterID), 0644)
+		if err != nil {
+			return microerror.Mask(err)
+		}
+	}
+
+	// Write provider to filesystem
+	{
+		providerPath := filepath.Join(r.flag.Output, "provider")
+		r.logger.LogCtx(ctx, "message", fmt.Sprintf("writing provider to path %s", providerPath))
+		err := ioutil.WriteFile(providerPath, []byte(provider), 0644)
+		if err != nil {
+			return microerror.Mask(err)
+		}
 	}
 
 	r.logger.LogCtx(ctx, "message", "setup complete")

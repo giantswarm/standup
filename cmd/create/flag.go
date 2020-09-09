@@ -1,76 +1,61 @@
 package create
 
 import (
-	"fmt"
 	"strings"
 
+	"github.com/Masterminds/semver/v3"
 	"github.com/giantswarm/microerror"
 	"github.com/spf13/cobra"
-
-	"github.com/giantswarm/standup/pkg/gsclient"
 )
 
 const (
-	defaultOutputClusterIDPath  = "/workspace/cluster/cluster-id"
-	defaultOutputKubeconfigPath = "/workspace/cluster/kubeconfig"
-
-	flagKubeconfig       = "kubeconfig"
-	flagEndpoint         = "endpoint"
-	flagInCluster        = "in-cluster"
-	flagOutputClusterID  = "output-cluster-id"
-	flagOutputKubeconfig = "output-kubeconfig"
-	flagProvider         = "provider"
-	flagRelease          = "release"
-	flagReleases         = "releases"
-	flagToken            = "token"
+	flagConfig     = "config"
+	flagKubeconfig = "kubeconfig"
+	flagOutput     = "output"
+	flagProvider   = "provider"
+	flagRelease    = "release"
+	flagReleases   = "releases"
 )
 
 type flag struct {
-	Kubeconfig       string
-	Endpoint         string
-	InCluster        bool
-	Provider         string
-	OutputClusterID  string
-	OutputKubeconfig string
-	Release          string
-	Releases         string
-	Token            string
+	Config     string
+	Kubeconfig string
+	Provider   string
+	Output     string
+	Release    string
+	Releases   string
 }
 
 func (f *flag) Init(cmd *cobra.Command) {
-	cmd.Flags().StringVarP(&f.Kubeconfig, flagKubeconfig, "k", "", `The path to the kubeconfig for the control plane.`)
-	cmd.Flags().StringVarP(&f.Endpoint, flagEndpoint, "n", "", `The endpoint of the target control plane's API.`)
-	cmd.Flags().BoolVarP(&f.InCluster, flagInCluster, "i", false, `True if this program is running in a Kubernetes cluster and should communicate with the API via the injected service account token.`)
-	cmd.Flags().StringVar(&f.OutputClusterID, flagOutputClusterID, "", fmt.Sprintf(`The path of the file in which to store the cluster ID of the created cluster.`))
-	cmd.Flags().StringVar(&f.OutputKubeconfig, flagOutputKubeconfig, "", fmt.Sprintf(`The path of the file in which to store the kubeconfig of the created cluster.`))
-	cmd.Flags().StringVarP(&f.Provider, flagProvider, "p", "", fmt.Sprintf(`The provider of the target release. Possible values: <%s>`, strings.Join(gsclient.AllProviders(), "|")))
-	cmd.Flags().StringVarP(&f.Release, flagRelease, "r", "", fmt.Sprintf(`The semantic version of the release to be tested.`))
-	cmd.Flags().StringVarP(&f.Releases, flagReleases, "s", "", fmt.Sprintf(`The path of the releases repo on the local filesystem.`))
-	cmd.Flags().StringVarP(&f.Token, flagToken, "t", "", `The token used to authenticate with the GS API.`)
+	cmd.Flags().StringVarP(&f.Config, flagConfig, "g", "", `The path to the file containing API endpoints and tokens for each provider.`)
+	cmd.Flags().StringVarP(&f.Kubeconfig, flagKubeconfig, "k", "", `The path to the directory containing the kubeconfig for provider control planes.`)
+	cmd.Flags().StringVar(&f.Output, flagOutput, "", `The directory in which to store the cluster ID, kubeconfig, and provider of the created cluster.`)
+	cmd.Flags().StringVarP(&f.Provider, flagProvider, "p", "", `The provider of the target release.`)
+	cmd.Flags().StringVarP(&f.Release, flagRelease, "r", "", `The semantic version of the release to be tested.`)
+	cmd.Flags().StringVarP(&f.Releases, flagReleases, "s", "", `The path of the releases repo on the local filesystem.`)
 }
 
 func (f *flag) Validate() error {
-	if f.Kubeconfig == "" && !f.InCluster || f.Kubeconfig != "" && f.InCluster {
-		return microerror.Maskf(invalidFlagError, "--%s and --%s are mutually exclusive", flagKubeconfig, flagInCluster)
+	if f.Config == "" {
+		return microerror.Maskf(invalidFlagError, "--%s is required", flagConfig)
 	}
-	if f.OutputClusterID == "" {
-		f.OutputClusterID = defaultOutputClusterIDPath
+	if f.Kubeconfig == "" {
+		return microerror.Maskf(invalidFlagError, "--%s is required", flagKubeconfig)
 	}
-	if f.OutputKubeconfig == "" {
-		f.OutputKubeconfig = defaultOutputKubeconfigPath
+	if f.Output == "" {
+		return microerror.Maskf(invalidFlagError, "--%s is required", flagOutput)
 	}
 	if f.Releases == "" {
 		return microerror.Maskf(invalidFlagError, "--%s is required", flagReleases)
 	}
 	if f.Release != "" {
-		// Remove leading v from release version
 		f.Release = strings.TrimPrefix(f.Release, "v")
-	}
-	if f.Release != "" && !gsclient.IsValidRelease(f.Release) {
-		return microerror.Maskf(invalidFlagError, "--%s must be a valid semantic version", flagRelease)
-	}
-	if f.Release != "" && f.Provider == "" {
-		return microerror.Maskf(invalidFlagError, "must specify a valid provider when setting an exact release version")
+		if _, err := semver.NewVersion(f.Release); err != nil {
+			return microerror.Maskf(invalidFlagError, "--%s must be a valid semantic version", flagRelease)
+		}
+		if f.Provider == "" {
+			return microerror.Maskf(invalidFlagError, "--%s must be specified when defining an exact release version", flagRelease)
+		}
 	}
 
 	return nil

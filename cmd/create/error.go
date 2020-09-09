@@ -19,3 +19,21 @@ var invalidFlagError = &microerror.Error{
 func IsInvalidFlag(err error) bool {
 	return microerror.Cause(err) == invalidFlagError
 }
+
+var releaseNotFoundError = &microerror.Error{
+	Kind: "releaseNotFoundError",
+}
+
+// IsReleaseNotFound asserts releaseNotFoundError.
+func IsReleaseNotFound(err error) bool {
+	return microerror.Cause(err) == releaseNotFoundError
+}
+
+var releaseNotReadyError = &microerror.Error{
+	Kind: "releaseNotReadyError",
+}
+
+// IsReleaseNotReady asserts releaseNotReadyError.
+func IsReleaseNotReady(err error) bool {
+	return microerror.Cause(err) == releaseNotReadyError
+}
