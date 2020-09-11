@@ -60,7 +60,7 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 
 			Endpoint: providerConfig.Endpoint,
 			Username: providerConfig.Username,
-			Password: providerConfig.Context,
+			Password: providerConfig.Password,
 			Token:    providerConfig.Token,
 		}
 
