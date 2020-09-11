@@ -79,6 +79,7 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 			_, err := k8sClient.CoreV1().Nodes().List(ctx, v1.ListOptions{})
 			if tenant.IsAPINotAvailable(err) || IsServerError(err) {
 				r.logger.LogCtx(ctx, "message", "API not yet available")
+				r.logger.LogCtx(ctx, "error", err.Error())
 				return microerror.Mask(err)
 			} else if err != nil {
 				r.logger.LogCtx(ctx, "message", "unexpected error contacting API", "error", err)
