@@ -96,8 +96,13 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 					return microerror.Mask(err)
 				}
 
+				mergeBase, err := git.MergeBase(r.flag.Releases)
+				if err != nil {
+					return microerror.Mask(err)
+				}
+
 				// Use "git diff" to find the release under test
-				diff, err := git.Diff(r.flag.Releases)
+				diff, err := git.Diff(r.flag.Releases, mergeBase)
 				if err != nil {
 					return microerror.Mask(err)
 				}

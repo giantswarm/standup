@@ -2,16 +2,17 @@ package git
 
 import (
 	"os/exec"
+	"strings"
 
 	"github.com/giantswarm/microerror"
 )
 
-func Diff(dir string) (string, error) {
+func Diff(dir, ref string) (string, error) {
 	// Determine the files added in this branch not in master
 	argsArr := []string{
 		"diff",
 		"--name-status",   // only show filename and the type of change (A=added, etc.)
-		"origin/master",   // diff against the latest master
+		ref,               // diff against the passed reference
 		"--diff-filter=A", // only show added files
 		"--no-renames",    // disable rename detection so we always find new releases
 		"HEAD",            // base ref for the diff
@@ -36,6 +37,21 @@ func Fetch(dir string) error {
 		return microerror.Mask(err)
 	}
 	return nil
+}
+
+func MergeBase(dir string) (string, error) {
+	// Fetch master so we can diff against it
+	argsArr := []string{
+		"merge-base",
+		"HEAD",
+		"origin/master",
+	}
+	mergeBase, err := runGit(argsArr, dir)
+	if err != nil {
+		return "", microerror.Mask(err)
+	}
+
+	return strings.TrimSpace(mergeBase), nil
 }
 
 func runGit(args []string, dir string) (string, error) {
