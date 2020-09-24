@@ -29,6 +29,7 @@ func Fetch(dir string) error {
 	// Fetch master so we can diff against it
 	argsArr := []string{
 		"fetch",
+		"--unshallow",
 		"origin",
 		"master",
 	}

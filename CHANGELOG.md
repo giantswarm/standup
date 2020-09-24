@@ -10,12 +10,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Added `wait` command to wait for various components of a test cluster to be ready.
+- Added `--unshallow` flag when calling `git fetch`
 
 ### Fixed
 
 - Added logic for handling cluster creation errors that fail to create a cluster.
 - Fixed `nil` dereference bug in `wait` command.
 - Adjusted `git diff` arguments to correctly identify target files in a PR.
+- Get only PR files by performing `git diff` against the merge base
 
 ### Changed
 
