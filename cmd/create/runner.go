@@ -206,6 +206,16 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 	}
 	r.logger.LogCtx(ctx, "message", "created release CR")
 
+	// Write release ID to filesystem
+	{
+		releaseIDPath := filepath.Join(r.flag.Output, "release-id")
+		r.logger.LogCtx(ctx, "message", fmt.Sprintf("writing release ID to path %s", releaseIDPath))
+		err := ioutil.WriteFile(releaseIDPath, []byte(release.Name), 0644)
+		if err != nil {
+			return microerror.Mask(err)
+		}
+	}
+
 	// Wait for the created release to be ready
 	r.logger.LogCtx(ctx, "message", "waiting for release to be ready")
 	{
@@ -243,6 +253,26 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 	}
 	r.logger.LogCtx(ctx, "message", fmt.Sprintf("created cluster %s", clusterID))
 
+	// Write cluster ID to filesystem
+	{
+		clusterIDPath := filepath.Join(r.flag.Output, "cluster-id")
+		r.logger.LogCtx(ctx, "message", fmt.Sprintf("writing cluster ID to path %s", clusterIDPath))
+		err := ioutil.WriteFile(clusterIDPath, []byte(clusterID), 0644)
+		if err != nil {
+			return microerror.Mask(err)
+		}
+	}
+
+	// Write provider to filesystem
+	{
+		providerPath := filepath.Join(r.flag.Output, "provider")
+		r.logger.LogCtx(ctx, "message", fmt.Sprintf("writing provider to path %s", providerPath))
+		err := ioutil.WriteFile(providerPath, []byte(provider), 0644)
+		if err != nil {
+			return microerror.Mask(err)
+		}
+	}
+
 	kubeconfigPath := filepath.Join(r.flag.Output, "kubeconfig")
 	r.logger.LogCtx(ctx, "message", fmt.Sprintf("creating and writing kubeconfig for cluster %s to path %s", clusterID, kubeconfigPath))
 	{
@@ -260,26 +290,6 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 		b := backoff.NewMaxRetries(^uint64(0), 20*time.Second)
 
 		err := backoff.Retry(o, b)
-		if err != nil {
-			return microerror.Mask(err)
-		}
-	}
-
-	// Write cluster ID to filesystem
-	{
-		clusterIDPath := filepath.Join(r.flag.Output, "cluster-id")
-		r.logger.LogCtx(ctx, "message", fmt.Sprintf("writing cluster ID to path %s", clusterIDPath))
-		err := ioutil.WriteFile(clusterIDPath, []byte(clusterID), 0644)
-		if err != nil {
-			return microerror.Mask(err)
-		}
-	}
-
-	// Write provider to filesystem
-	{
-		providerPath := filepath.Join(r.flag.Output, "provider")
-		r.logger.LogCtx(ctx, "message", fmt.Sprintf("writing provider to path %s", providerPath))
-		err := ioutil.WriteFile(providerPath, []byte(provider), 0644)
 		if err != nil {
 			return microerror.Mask(err)
 		}

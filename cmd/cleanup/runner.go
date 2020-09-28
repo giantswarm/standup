@@ -101,10 +101,14 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 	// Get release version of tenant cluster
 	var releaseVersion string
 	{
-		var err error
-		releaseVersion, err = gsClient.GetClusterReleaseVersion(ctx, r.flag.ClusterID)
-		if err != nil {
-			return microerror.Mask(err)
+		if r.flag.ReleaseID != "" {
+			releaseVersion = r.flag.ReleaseID
+		} else {
+			var err error
+			releaseVersion, err = gsClient.GetClusterReleaseVersion(ctx, r.flag.ClusterID)
+			if err != nil {
+				return microerror.Mask(err)
+			}
 		}
 	}
 
@@ -113,7 +117,10 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 	r.logger.LogCtx(ctx, "message", "deleting cluster")
 	{
 		err := gsClient.DeleteCluster(ctx, r.flag.ClusterID)
-		if err != nil {
+		if gsclient.IsClusterNotFoundError(err) {
+			r.logger.LogCtx(ctx, "message", "cluster does not exist")
+			// fall through
+		} else if err != nil {
 			return microerror.Mask(err)
 		}
 

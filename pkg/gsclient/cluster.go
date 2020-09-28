@@ -28,7 +28,7 @@ func (c *Client) CreateCluster(ctx context.Context, releaseVersion string) (stri
 		return "", microerror.Mask(err)
 	}
 
-	if response.Result == key.CreationResultError {
+	if response.Result == key.ResultError {
 		return "", microerror.Maskf(clusterCreationError, output.String())
 	} else if response.Result == key.CreationResultCreatedWithError {
 		return response.ClusterID, microerror.Maskf(clusterCreationError, output.String())
@@ -55,7 +55,9 @@ func (c *Client) DeleteCluster(ctx context.Context, clusterID string) error {
 		return microerror.Mask(err)
 	}
 
-	if response.Result != key.DeletionResultScheduled {
+	if response.Result == key.ResultError && response.Error.Kind == "ClusterNotFoundError" {
+		return microerror.Maskf(clusterNotFoundError, output.String())
+	} else if response.Result != key.DeletionResultScheduled {
 		return microerror.Maskf(clusterDeletionError, output.String())
 	}
 

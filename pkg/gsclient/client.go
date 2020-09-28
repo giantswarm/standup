@@ -3,7 +3,6 @@ package gsclient
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"os/exec"
 
 	"github.com/giantswarm/microerror"
@@ -85,8 +84,10 @@ func (c *Client) runWithGsctl(ctx context.Context, args ...string) (bytes.Buffer
 
 	err := gsctlCmd.Run()
 	if err != nil {
-		fmt.Println(stdout.String())
-		fmt.Println(stderr.String())
+		if _, ok := err.(*exec.ExitError); ok {
+			// Command started successfully and failed -> we want to parse the output JSON for more info
+			return stdout, nil
+		}
 		return stdout, microerror.Mask(err)
 	}
 

@@ -15,4 +15,9 @@ type CreationResponse struct {
 type DeletionResponse struct {
 	ClusterID string `json:"id"`
 	Result    string `json:"result"`
+	Error     Error  `json:"error,omitempty"`
+}
+
+type Error struct {
+	Kind string `json:"kind"`
 }

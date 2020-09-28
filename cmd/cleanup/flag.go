@@ -10,6 +10,7 @@ const (
 	flagClusterID  = "cluster"
 	flagKubeconfig = "kubeconfig"
 	flagProvider   = "provider"
+	flagReleaseID  = "release"
 )
 
 type flag struct {
@@ -17,6 +18,7 @@ type flag struct {
 	Config     string
 	Kubeconfig string
 	Provider   string
+	ReleaseID  string
 }
 
 func (f *flag) Init(cmd *cobra.Command) {
@@ -24,6 +26,7 @@ func (f *flag) Init(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&f.Config, flagConfig, "g", "", `The path to the file containing API endpoints and tokens for each provider.`)
 	cmd.Flags().StringVarP(&f.Kubeconfig, flagKubeconfig, "k", "", `The path to the kubeconfig for the control plane.`)
 	cmd.Flags().StringVarP(&f.Provider, flagProvider, "p", "", `The provider of the cluster to delete.`)
+	cmd.Flags().StringVarP(&f.ReleaseID, flagReleaseID, "r", "", `The release to delete. Defaults to the release of the passed cluster.`)
 }
 
 func (f *flag) Validate() error {
