@@ -2,14 +2,6 @@ package gsclient
 
 import "github.com/giantswarm/microerror"
 
-var invalidConfigError = &microerror.Error{
-	Kind: "invalidConfigError",
-}
-
-var invalidResponseError = &microerror.Error{
-	Kind: "invalidResponseError",
-}
-
 var clusterCreationError = &microerror.Error{
 	Kind: "clusterCreationError",
 }
@@ -35,4 +27,12 @@ var clusterNotFoundError = &microerror.Error{
 // IsClusterNotFoundError asserts clusterNotFoundError.
 func IsClusterNotFoundError(err error) bool {
 	return microerror.Cause(err) == clusterNotFoundError
+}
+
+var invalidConfigError = &microerror.Error{
+	Kind: "invalidConfigError",
+}
+
+var invalidResponseError = &microerror.Error{
+	Kind: "invalidResponseError",
 }
