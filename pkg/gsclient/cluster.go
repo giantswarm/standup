@@ -25,7 +25,7 @@ func (c *Client) CreateCluster(ctx context.Context, releaseVersion string) (stri
 	var response CreationResponse
 	err = json.Unmarshal(output.Bytes(), &response)
 	if err != nil {
-		return "", microerror.Mask(err)
+		return "", microerror.Maskf(invalidResponseError, output.String())
 	}
 
 	if response.Result == key.ResultError {
@@ -52,7 +52,7 @@ func (c *Client) DeleteCluster(ctx context.Context, clusterID string) error {
 	var response DeletionResponse
 	err = json.Unmarshal(output.Bytes(), &response)
 	if err != nil {
-		return microerror.Mask(err)
+		return microerror.Maskf(invalidResponseError, output.String())
 	}
 
 	if response.Result == key.ResultError && response.Error.Kind == "ClusterNotFoundError" {
@@ -99,7 +99,7 @@ func (c *Client) ListClusters(ctx context.Context) ([]ClusterEntry, error) {
 	var response []ClusterEntry
 	err = json.Unmarshal(output.Bytes(), &response)
 	if err != nil {
-		return nil, microerror.Mask(err)
+		return nil, microerror.Maskf(invalidResponseError, output.String())
 	}
 
 	return response, nil

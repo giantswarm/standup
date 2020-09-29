@@ -6,6 +6,10 @@ var invalidConfigError = &microerror.Error{
 	Kind: "invalidConfigError",
 }
 
+var invalidResponseError = &microerror.Error{
+	Kind: "invalidResponseError",
+}
+
 var clusterCreationError = &microerror.Error{
 	Kind: "clusterCreationError",
 }
