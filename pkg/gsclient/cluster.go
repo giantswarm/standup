@@ -55,9 +55,10 @@ func (c *Client) DeleteCluster(ctx context.Context, clusterID string) error {
 		return microerror.Maskf(invalidResponseError, output.String())
 	}
 
-	if response.Result == key.ResultError && response.Error.Kind == "ClusterNotFoundError" {
-		return microerror.Maskf(clusterNotFoundError, output.String())
-	} else if response.Result != key.DeletionResultScheduled {
+	if response.Result != key.DeletionResultScheduled {
+		if response.Error.Kind == "ClusterNotFoundError" {
+			return microerror.Maskf(clusterNotFoundError, output.String())
+		}
 		return microerror.Maskf(clusterDeletionError, output.String())
 	}
 
