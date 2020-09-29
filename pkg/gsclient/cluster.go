@@ -2,7 +2,6 @@ package gsclient
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 
 	"github.com/giantswarm/microerror"
@@ -16,16 +15,11 @@ func (c *Client) CreateCluster(ctx context.Context, releaseVersion string) (stri
 		return "", microerror.Mask(err)
 	}
 
+	var response CreationResponse
 	// TODO: extract and structure all these hardcoded values
-	output, err := c.runWithGsctl(ctx, "--output=json", "create", "cluster", "--owner", "conformance-testing", "--name", releaseVersion, "--release", releaseVersion)
+	output, err := c.runWithGsctlJSON(ctx, &response, "--output=json", "create", "cluster", "--owner", "conformance-testing", "--name", releaseVersion, "--release", releaseVersion)
 	if err != nil {
 		return "", microerror.Mask(err)
-	}
-
-	var response CreationResponse
-	err = json.Unmarshal(output.Bytes(), &response)
-	if err != nil {
-		return "", microerror.Maskf(invalidResponseError, output.String())
 	}
 
 	if response.Result == key.ResultError {
@@ -43,16 +37,11 @@ func (c *Client) DeleteCluster(ctx context.Context, clusterID string) error {
 		return microerror.Mask(err)
 	}
 
+	var response DeletionResponse
 	// TODO: extract and structure all these hardcoded values
-	output, err := c.runWithGsctl(ctx, "--output=json", "delete", "cluster", clusterID)
+	output, err := c.runWithGsctlJSON(ctx, &response, "--output=json", "delete", "cluster", clusterID)
 	if err != nil {
 		return microerror.Mask(err)
-	}
-
-	var response DeletionResponse
-	err = json.Unmarshal(output.Bytes(), &response)
-	if err != nil {
-		return microerror.Maskf(invalidResponseError, output.String())
 	}
 
 	if response.Result != key.DeletionResultScheduled {
@@ -92,15 +81,10 @@ func (c *Client) ListClusters(ctx context.Context) ([]ClusterEntry, error) {
 		return nil, microerror.Mask(err)
 	}
 
-	output, err := c.runWithGsctl(ctx, "--output=json", "list", "clusters", "--show-deleting")
+	var response []ClusterEntry
+	_, err = c.runWithGsctlJSON(ctx, &response, "--output=json", "list", "clusters", "--show-deleting")
 	if err != nil {
 		return nil, microerror.Mask(err)
-	}
-
-	var response []ClusterEntry
-	err = json.Unmarshal(output.Bytes(), &response)
-	if err != nil {
-		return nil, microerror.Maskf(invalidResponseError, output.String())
 	}
 
 	return response, nil
