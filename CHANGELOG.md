@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added `wait` command to wait for various components of a test cluster to be ready.
 - Added `--unshallow` flag when calling `git fetch`
+- Added `--release` flag to `cleanup` that specifies the release to delete. Defaults to the release of the cluster
+passed via `--cluster`.
 
 ### Fixed
 
@@ -25,6 +27,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Use `gsctl` version 0.24.0.
 - Let `gsctl` write the kubeconfig directly.
 - Modified to be used in tenant clusters against external control planes.
+- `create` writes release ID to filesystem.
+- `cleanup` tries to clean up the release passed via `--release` if cluster does not exist.
+- Parse `gsctl` command output when it fails internally.
 
 ### Removed
 

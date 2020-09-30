@@ -2,7 +2,6 @@ package gsclient
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 
 	"github.com/giantswarm/microerror"
@@ -16,22 +15,17 @@ func (c *Client) CreateCluster(ctx context.Context, releaseVersion string) (stri
 		return "", microerror.Mask(err)
 	}
 
-	// TODO: extract and structure all these hardcoded values
-	output, err := c.runWithGsctl(ctx, "--output=json", "create", "cluster", "--owner", "conformance-testing", "--name", releaseVersion, "--release", releaseVersion)
-	if err != nil {
-		return "", microerror.Mask(err)
-	}
-
 	var response CreationResponse
-	err = json.Unmarshal(output.Bytes(), &response)
+	// TODO: extract and structure all these hardcoded values
+	output, err := c.runWithGsctlJSON(ctx, &response, "--output=json", "create", "cluster", "--owner", "conformance-testing", "--name", releaseVersion, "--release", releaseVersion)
 	if err != nil {
 		return "", microerror.Mask(err)
 	}
 
-	if response.Result == key.CreationResultError {
-		return "", microerror.Maskf(clusterCreationError, output.String())
+	if response.Result == key.ResultError {
+		return "", microerror.Maskf(clusterCreationError, string(output))
 	} else if response.Result == key.CreationResultCreatedWithError {
-		return response.ClusterID, microerror.Maskf(clusterCreationError, output.String())
+		return response.ClusterID, microerror.Maskf(clusterCreationError, string(output))
 	}
 
 	return response.ClusterID, nil
@@ -43,20 +37,18 @@ func (c *Client) DeleteCluster(ctx context.Context, clusterID string) error {
 		return microerror.Mask(err)
 	}
 
-	// TODO: extract and structure all these hardcoded values
-	output, err := c.runWithGsctl(ctx, "--output=json", "delete", "cluster", clusterID)
-	if err != nil {
-		return microerror.Mask(err)
-	}
-
 	var response DeletionResponse
-	err = json.Unmarshal(output.Bytes(), &response)
+	// TODO: extract and structure all these hardcoded values
+	output, err := c.runWithGsctlJSON(ctx, &response, "--output=json", "delete", "cluster", clusterID)
 	if err != nil {
 		return microerror.Mask(err)
 	}
 
 	if response.Result != key.DeletionResultScheduled {
-		return microerror.Maskf(clusterDeletionError, output.String())
+		if response.Error.Kind == "ClusterNotFoundError" {
+			return microerror.Maskf(clusterNotFoundError, string(output))
+		}
+		return microerror.Maskf(clusterDeletionError, string(output))
 	}
 
 	return nil
@@ -89,13 +81,8 @@ func (c *Client) ListClusters(ctx context.Context) ([]ClusterEntry, error) {
 		return nil, microerror.Mask(err)
 	}
 
-	output, err := c.runWithGsctl(ctx, "--output=json", "list", "clusters", "--show-deleting")
-	if err != nil {
-		return nil, microerror.Mask(err)
-	}
-
 	var response []ClusterEntry
-	err = json.Unmarshal(output.Bytes(), &response)
+	_, err = c.runWithGsctlJSON(ctx, &response, "--output=json", "list", "clusters", "--show-deleting")
 	if err != nil {
 		return nil, microerror.Mask(err)
 	}

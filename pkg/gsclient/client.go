@@ -3,7 +3,8 @@ package gsclient
 import (
 	"bytes"
 	"context"
-	"fmt"
+	"encoding/json"
+	"errors"
 	"os/exec"
 
 	"github.com/giantswarm/microerror"
@@ -70,24 +71,38 @@ func (c *Client) authenticate(ctx context.Context) error {
 	return nil
 }
 
-func (c *Client) runWithGsctl(ctx context.Context, args ...string) (bytes.Buffer, error) {
+func (c *Client) runWithGsctl(ctx context.Context, args ...string) ([]byte, error) {
 	args = append(args, "--endpoint", c.endpoint)
 	if c.token != "" {
 		args = append(args, "--auth-token", c.token)
 	}
 
 	var stdout bytes.Buffer
-	var stderr bytes.Buffer
 
 	gsctlCmd := exec.CommandContext(ctx, "gsctl", args...)
 	gsctlCmd.Stdout = &stdout
-	gsctlCmd.Stderr = &stderr
 
 	err := gsctlCmd.Run()
 	if err != nil {
-		fmt.Println(stdout.String())
-		fmt.Println(stderr.String())
+		return stdout.Bytes(), microerror.Mask(err)
+	}
+
+	return stdout.Bytes(), nil
+}
+
+func (c *Client) runWithGsctlJSON(ctx context.Context, result interface{}, args ...string) ([]byte, error) {
+	stdout, err := c.runWithGsctl(ctx, args...)
+	var exitError *exec.ExitError
+	if errors.As(err, &exitError) {
+		// Command started successfully and failed -> we want to parse the output JSON for more info
+		// Fall through
+	} else if err != nil {
 		return stdout, microerror.Mask(err)
+	}
+
+	err = json.Unmarshal(stdout, &result)
+	if err != nil {
+		return stdout, microerror.Maskf(invalidResponseError, string(stdout))
 	}
 
 	return stdout, nil
