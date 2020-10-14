@@ -30,6 +30,8 @@ passed via `--cluster`.
 - `create` writes release ID to filesystem.
 - `cleanup` tries to clean up the release passed via `--release` if cluster does not exist.
 - Parse `gsctl` command output when it fails internally.
+- Update `gsctl` to `0.24.4`.
+- Update `kubectl` to `0.18.9`.
 
 ### Removed
 
