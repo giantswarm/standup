@@ -7,11 +7,14 @@ import (
 	"github.com/giantswarm/microerror"
 	"github.com/giantswarm/micrologger"
 	"github.com/spf13/cobra"
+
+	"github.com/giantswarm/standup/cmd/create/cluster"
+	"github.com/giantswarm/standup/cmd/create/release"
 )
 
 const (
 	name        = "create"
-	description = "Creates a release and a tenant cluster in that release version."
+	description = "Provides commands for creating resources on test installations."
 )
 
 type Config struct {
@@ -31,6 +34,36 @@ func New(config Config) (*cobra.Command, error) {
 		config.Stdout = os.Stdout
 	}
 
+	var err error
+
+	var clusterCmd *cobra.Command
+	{
+		c := cluster.Config{
+			Logger: config.Logger,
+			Stderr: config.Stderr,
+			Stdout: config.Stdout,
+		}
+
+		clusterCmd, err = cluster.New(c)
+		if err != nil {
+			return nil, microerror.Mask(err)
+		}
+	}
+
+	var releaseCmd *cobra.Command
+	{
+		c := release.Config{
+			Logger: config.Logger,
+			Stderr: config.Stderr,
+			Stdout: config.Stdout,
+		}
+
+		releaseCmd, err = release.New(c)
+		if err != nil {
+			return nil, microerror.Mask(err)
+		}
+	}
+
 	f := &flag{}
 
 	r := &runner{
@@ -41,13 +74,17 @@ func New(config Config) (*cobra.Command, error) {
 	}
 
 	c := &cobra.Command{
-		Use:   name,
-		Short: description,
-		Long:  description,
-		RunE:  r.Run,
+		Use:          name,
+		Short:        description,
+		Long:         description,
+		RunE:         r.Run,
+		SilenceUsage: true,
 	}
 
 	f.Init(c)
+
+	c.AddCommand(clusterCmd)
+	c.AddCommand(releaseCmd)
 
 	return c, nil
 }
