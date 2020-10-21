@@ -170,6 +170,16 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 		}
 	}
 
+	// Write provider to filesystem
+	{
+		providerPath := filepath.Join(r.flag.Output, "provider")
+		r.logger.LogCtx(ctx, "message", fmt.Sprintf("writing provider to path %s", providerPath))
+		err := ioutil.WriteFile(providerPath, []byte(provider), 0644)
+		if err != nil {
+			return microerror.Mask(err)
+		}
+	}
+
 	// Create the Release CR
 	r.logger.LogCtx(ctx, "message", "creating release CR")
 	{

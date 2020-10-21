@@ -91,16 +91,6 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 		}
 	}
 
-	// Write provider to filesystem
-	{
-		providerPath := filepath.Join(r.flag.Output, "provider")
-		r.logger.LogCtx(ctx, "message", fmt.Sprintf("writing provider to path %s", providerPath))
-		err := ioutil.WriteFile(providerPath, []byte(r.flag.Provider), 0644)
-		if err != nil {
-			return microerror.Mask(err)
-		}
-	}
-
 	kubeconfigPath := filepath.Join(r.flag.Output, "kubeconfig")
 	r.logger.LogCtx(ctx, "message", fmt.Sprintf("creating and writing kubeconfig for cluster %s to path %s", clusterID, kubeconfigPath))
 	{
