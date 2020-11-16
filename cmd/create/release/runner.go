@@ -6,6 +6,7 @@ import (
 	"io"
 	"io/ioutil"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -24,6 +25,10 @@ import (
 	"github.com/giantswarm/standup/pkg/config"
 	"github.com/giantswarm/standup/pkg/git"
 )
+
+// Following pattern for release name has been taken from CRD validation:
+// https://github.com/giantswarm/apiextensions/blob/master/config/crd/patches/v1/release.giantswarm.io_releases/patch.yaml
+var releaseNamePattern = regexp.MustCompile(`^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-[\.0-9a-zA-Z]*)?$`)
 
 type runner struct {
 	flag   *flag
@@ -121,9 +126,9 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 			return microerror.Mask(err)
 		}
 
-		// Randomize the name to avoid duplicate names
+		// Randomize the name to avoid duplicate names.
 		originalName := release.Name
-		release.Name = release.Name + "-" + strconv.Itoa(int(time.Now().Unix()))
+		release.Name = generateReleaseName(release.Name)
 		releaseVersion = strings.TrimPrefix(release.Name, "v")
 		r.logger.LogCtx(ctx, "message", fmt.Sprintf("testing release %s for %s as %s", strings.TrimPrefix(originalName, "v"), provider, releaseVersion))
 
@@ -226,4 +231,15 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 	r.logger.LogCtx(ctx, "message", "release is ready")
 
 	return nil
+}
+
+func generateReleaseName(name string) string {
+	testSuffix := "-" + strconv.Itoa(int(time.Now().Unix()))
+
+	m := releaseNamePattern.FindStringSubmatch(name)
+	if m == nil || m[4] == "" {
+		return name + testSuffix
+	}
+
+	return strings.Replace(name, m[4], testSuffix, 1)
 }
