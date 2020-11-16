@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Improve test release name generation to work with alpha / beta releases.
+
 ## [1.1.0] - 2020-10-21
 
 ### Changed
