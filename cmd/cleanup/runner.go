@@ -17,6 +17,7 @@ import (
 
 	"github.com/giantswarm/standup/pkg/config"
 	"github.com/giantswarm/standup/pkg/gsclient"
+	"github.com/giantswarm/standup/pkg/key"
 )
 
 type runner struct {
@@ -71,15 +72,15 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 		}
 	}
 
+	kubeconfigPath := key.KubeconfigPath(r.flag.Kubeconfig, r.flag.Provider)
+
 	// Create REST config for the control plane
 	var restConfig *rest.Config
 	{
 		var err error
 		restConfig, err = clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
-			&clientcmd.ClientConfigLoadingRules{ExplicitPath: r.flag.Kubeconfig},
-			&clientcmd.ConfigOverrides{
-				CurrentContext: providerConfig.Context,
-			}).ClientConfig()
+			&clientcmd.ClientConfigLoadingRules{ExplicitPath: kubeconfigPath},
+			&clientcmd.ConfigOverrides{}).ClientConfig()
 		if err != nil {
 			return microerror.Mask(err)
 		}

@@ -8,7 +8,6 @@ import (
 )
 
 type ProviderConfig struct {
-	Context  string `json:"context"`
 	Endpoint string `json:"endpoint"`
 	Password string `json:"password"`
 	Token    string `json:"token"`
@@ -31,9 +30,6 @@ func LoadProviderConfig(path string, provider string) (*ProviderConfig, error) {
 		return nil, microerror.Maskf(invalidConfigError, "missing config for provider %#q", provider)
 	}
 
-	if providerConfig.Context == "" {
-		return nil, microerror.Maskf(invalidConfigError, "missing context for provider %#q", provider)
-	}
 	if providerConfig.Endpoint == "" {
 		return nil, microerror.Maskf(invalidConfigError, "missing endpoint for provider %#q", provider)
 	}
