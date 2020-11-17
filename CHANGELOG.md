@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- `--kubeconfig` flag now contains a directory with separate kubeconfig files for each provider
+
+### Removed
+
+- Removed `--kubeconfig` flag from `create cluster` command.
+
 ## [1.1.1] - 2020-11-16
 
 - Improve test release name generation to work with alpha / beta releases.
