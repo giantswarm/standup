@@ -22,8 +22,8 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/yaml"
 
-	"github.com/giantswarm/standup/pkg/config"
 	"github.com/giantswarm/standup/pkg/git"
+	"github.com/giantswarm/standup/pkg/key"
 )
 
 // Following pattern for release name has been taken from CRD validation:
@@ -139,24 +139,15 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 		release.Labels["giantswarm.io/testing"] = "true"
 	}
 
-	var providerConfig *config.ProviderConfig
-	{
-		var err error
-		providerConfig, err = config.LoadProviderConfig(r.flag.Config, provider)
-		if err != nil {
-			return microerror.Mask(err)
-		}
-	}
+	kubeconfigPath := key.KubeconfigPath(r.flag.Kubeconfig, provider)
 
 	// Create REST config for the control plane
 	var restConfig *rest.Config
 	{
 		var err error
 		restConfig, err = clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
-			&clientcmd.ClientConfigLoadingRules{ExplicitPath: r.flag.Kubeconfig},
-			&clientcmd.ConfigOverrides{
-				CurrentContext: providerConfig.Context,
-			}).ClientConfig()
+			&clientcmd.ClientConfigLoadingRules{ExplicitPath: kubeconfigPath},
+			&clientcmd.ConfigOverrides{}).ClientConfig()
 		if err != nil {
 			return microerror.Mask(err)
 		}

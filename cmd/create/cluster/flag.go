@@ -9,11 +9,10 @@ import (
 )
 
 const (
-	flagConfig     = "config"
-	flagKubeconfig = "kubeconfig"
-	flagOutput     = "output"
-	flagProvider   = "provider"
-	flagRelease    = "release"
+	flagConfig   = "config"
+	flagOutput   = "output"
+	flagProvider = "provider"
+	flagRelease  = "release"
 )
 
 type flag struct {
@@ -26,7 +25,6 @@ type flag struct {
 
 func (f *flag) Init(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&f.Config, flagConfig, "g", "", `The path to the file containing API endpoints and tokens for each provider.`)
-	cmd.Flags().StringVarP(&f.Kubeconfig, flagKubeconfig, "k", "", `The path to the directory containing the kubeconfig for provider control planes.`)
 	cmd.Flags().StringVar(&f.Output, flagOutput, "", `The directory in which to store the cluster ID, kubeconfig, and provider of the created cluster.`)
 	cmd.Flags().StringVarP(&f.Provider, flagProvider, "p", "", `The provider of the target control plane.`)
 	cmd.Flags().StringVarP(&f.Release, flagRelease, "r", "", `The semantic version of the release to be tested.`)
@@ -35,9 +33,6 @@ func (f *flag) Init(cmd *cobra.Command) {
 func (f *flag) Validate() error {
 	if f.Config == "" {
 		return microerror.Maskf(invalidFlagError, "--%s is required", flagConfig)
-	}
-	if f.Kubeconfig == "" {
-		return microerror.Maskf(invalidFlagError, "--%s is required", flagKubeconfig)
 	}
 	if f.Output == "" {
 		return microerror.Maskf(invalidFlagError, "--%s is required", flagOutput)
