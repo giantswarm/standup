@@ -199,7 +199,7 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 		r.logger.LogCtx(ctx, "message", "CoreDNS is ready")
 	}
 
-	if r.flag.Provider != "KVM" {
+	if r.flag.Provider != "kvm" {
 		r.logger.LogCtx(ctx, "message", "waiting for external-dns to be ready")
 
 		targetLabels := map[string]string{
