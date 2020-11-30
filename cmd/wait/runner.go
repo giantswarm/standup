@@ -199,6 +199,9 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 		r.logger.LogCtx(ctx, "message", "CoreDNS is ready")
 	}
 
+	// We wait for external-dns for Azure and AWS. This prevents failures where
+	// the CNCF suit is started before external-dns is functional.
+	// This is not necessary on KVM as there is no external-dns app running.
 	if r.flag.Provider != "kvm" {
 		r.logger.LogCtx(ctx, "message", "waiting for external-dns to be ready")
 
