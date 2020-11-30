@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Wait for `external-dns` on AWS and Azure in `wait` task.
+
 ## [2.0.0] - 2020-11-18
 
 ### Changed
