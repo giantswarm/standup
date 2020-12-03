@@ -98,7 +98,6 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 			// Create a keypair and kubeconfig for the new tenant cluster
 			err := gsClient.CreateKubeconfig(ctx, clusterID, kubeconfigPath)
 			if err != nil {
-				// TODO: check to see if it's a permanent error or the kubeconfig just isn't ready yet
 				r.logger.LogCtx(ctx, "message", "error creating kubeconfig", "error", err)
 				return microerror.Mask(err)
 			}

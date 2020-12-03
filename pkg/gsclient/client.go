@@ -11,6 +11,11 @@ import (
 	"github.com/giantswarm/micrologger"
 )
 
+const (
+	OutputTypeJSON     = "json"
+	FlagOutputTypeJSON = "--output=json"
+)
+
 type Config struct {
 	Logger micrologger.Logger
 
@@ -25,6 +30,23 @@ type Client struct {
 	password string
 	token    string
 	username string
+}
+
+type GsctlCreateClusterOptions struct {
+	OutputType string
+	Owner      string
+	Name       string
+	Release    string
+}
+
+type GsctlDeleteClusterOptions struct {
+	OutputType string
+	ID         string
+}
+
+type GsctlListClustersOptions struct {
+	OutputType   string
+	ShowDeleting bool
 }
 
 func New(config Config) (*Client, error) {
@@ -69,6 +91,85 @@ func (c *Client) authenticate(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func (c *Client) gsctlCreateCluster(ctx context.Context, result interface{}, options GsctlCreateClusterOptions) ([]byte, error) {
+
+	gsctlArgs := []string{
+		"create", "cluster",
+		"--owner", options.Owner,
+		"--name", options.Name,
+		"--release", options.Release,
+	}
+
+	var output []byte
+	var err error
+
+	if options.OutputType == OutputTypeJSON {
+		gsctlArgs = append([]string{FlagOutputTypeJSON}, gsctlArgs...) // prepend the output format
+
+		output, err = c.runWithGsctlJSON(ctx, &result, gsctlArgs...)
+		if err != nil {
+			return output, microerror.Mask(err)
+		}
+	} else {
+		return nil, microerror.Maskf(invalidConfigError, "Output type %T.OutputType is not supported.", options)
+	}
+
+	return output, nil
+
+}
+
+func (c *Client) gsctlDeleteCluster(ctx context.Context, result interface{}, options GsctlDeleteClusterOptions) ([]byte, error) {
+
+	gsctlArgs := []string{
+		"delete", "cluster", options.ID,
+	}
+
+	var output []byte
+	var err error
+
+	if options.OutputType == OutputTypeJSON {
+		gsctlArgs = append([]string{FlagOutputTypeJSON}, gsctlArgs...) // prepend the output format
+
+		output, err = c.runWithGsctlJSON(ctx, &result, gsctlArgs...)
+		if err != nil {
+			return output, microerror.Mask(err)
+		}
+	} else {
+		return nil, microerror.Maskf(invalidConfigError, "Output type %T.OutputType is not supported.", options)
+	}
+
+	return output, nil
+
+}
+
+func (c *Client) gsctlListClusters(ctx context.Context, result interface{}, options GsctlListClustersOptions) ([]byte, error) {
+
+	gsctlArgs := []string{
+		"list", "clusters",
+	}
+
+	var output []byte
+	var err error
+
+	if options.ShowDeleting {
+		gsctlArgs = append(gsctlArgs, "--show-deleting")
+	}
+
+	if options.OutputType == OutputTypeJSON {
+		gsctlArgs = append([]string{FlagOutputTypeJSON}, gsctlArgs...) // prepend the output format
+
+		output, err = c.runWithGsctlJSON(ctx, &result, gsctlArgs...)
+		if err != nil {
+			return output, microerror.Mask(err)
+		}
+	} else {
+		return nil, microerror.Maskf(invalidConfigError, "Output type %T.OutputType is not supported.", options)
+	}
+
+	return output, nil
+
 }
 
 func (c *Client) runWithGsctl(ctx context.Context, args ...string) ([]byte, error) {
