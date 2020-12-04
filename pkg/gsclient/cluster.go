@@ -15,9 +15,15 @@ func (c *Client) CreateCluster(ctx context.Context, releaseVersion string) (stri
 		return "", microerror.Mask(err)
 	}
 
+	createOptions := GsctlCreateClusterOptions{
+		OutputType: OutputTypeJSON,
+		Owner:      key.ClusterOwnerName,
+		Name:       releaseVersion,
+		Release:    releaseVersion,
+	}
+
 	var response CreationResponse
-	// TODO: extract and structure all these hardcoded values
-	output, err := c.runWithGsctlJSON(ctx, &response, "--output=json", "create", "cluster", "--owner", "conformance-testing", "--name", releaseVersion, "--release", releaseVersion)
+	output, err := c.gsctlCreateCluster(ctx, &response, createOptions)
 	if err != nil {
 		return "", microerror.Mask(err)
 	}
@@ -37,9 +43,13 @@ func (c *Client) DeleteCluster(ctx context.Context, clusterID string) error {
 		return microerror.Mask(err)
 	}
 
+	deleteOptions := GsctlDeleteClusterOptions{
+		OutputType: OutputTypeJSON,
+		ID:         clusterID,
+	}
+
 	var response DeletionResponse
-	// TODO: extract and structure all these hardcoded values
-	output, err := c.runWithGsctlJSON(ctx, &response, "--output=json", "delete", "cluster", clusterID)
+	output, err := c.gsctlDeleteCluster(ctx, &response, deleteOptions)
 	if err != nil {
 		return microerror.Mask(err)
 	}
@@ -81,8 +91,13 @@ func (c *Client) ListClusters(ctx context.Context) ([]ClusterEntry, error) {
 		return nil, microerror.Mask(err)
 	}
 
+	listOptions := GsctlListClustersOptions{
+		OutputType:   OutputTypeJSON,
+		ShowDeleting: true,
+	}
+
 	var response []ClusterEntry
-	_, err = c.runWithGsctlJSON(ctx, &response, "--output=json", "list", "clusters", "--show-deleting")
+	_, err = c.gsctlListClusters(ctx, &response, listOptions)
 	if err != nil {
 		return nil, microerror.Mask(err)
 	}
