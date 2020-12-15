@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/giantswarm/standup/cmd/cleanup"
+	"github.com/giantswarm/standup/cmd/cnfm"
 	"github.com/giantswarm/standup/cmd/create"
 	"github.com/giantswarm/standup/cmd/version"
 	"github.com/giantswarm/standup/cmd/wait"
@@ -58,6 +59,20 @@ func New(config Config) (*cobra.Command, error) {
 		}
 
 		cleanupCmd, err = cleanup.New(c)
+		if err != nil {
+			return nil, microerror.Mask(err)
+		}
+	}
+
+	var cnfmCmd *cobra.Command
+	{
+		c := cnfm.Config{
+			Logger: config.Logger,
+			Stderr: config.Stderr,
+			Stdout: config.Stdout,
+		}
+
+		cnfmCmd, err = cnfm.New(c)
 		if err != nil {
 			return nil, microerror.Mask(err)
 		}
@@ -128,6 +143,7 @@ func New(config Config) (*cobra.Command, error) {
 	f.Init(c)
 
 	c.AddCommand(cleanupCmd)
+	c.AddCommand(cnfmCmd)
 	c.AddCommand(createCmd)
 	c.AddCommand(versionCmd)
 	c.AddCommand(waitCmd)
