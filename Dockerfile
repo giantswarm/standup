@@ -3,7 +3,7 @@ FROM quay.io/giantswarm/alpine:3.12 AS binaries
 ARG KUBECTL_VERSION=1.18.9
 ARG GSCTL_VERSION=0.24.4
 
-RUN apk add --no-cache ca-certificates curl jq \
+RUN apk add --no-cache ca-certificates curl \
     && mkdir -p /binaries \
     && curl -SL https://storage.googleapis.com/kubernetes-release/release/v${KUBECTL_VERSION}/bin/linux/amd64/kubectl -o /binaries/kubectl \
     && curl -SL https://github.com/giantswarm/gsctl/releases/download/${GSCTL_VERSION}/gsctl-${GSCTL_VERSION}-linux-amd64.tar.gz | \
@@ -13,7 +13,7 @@ RUN apk add --no-cache ca-certificates curl jq \
 FROM quay.io/giantswarm/alpine:3.11-giantswarm as base
 
 USER root
-RUN apk add --no-cache git
+RUN apk add --no-cache git jq
 
 USER giantswarm
 COPY --from=binaries /binaries/* /usr/bin/
