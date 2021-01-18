@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add `--mode` flag to the `create release` command to customize how the release CR is created. Needed to trigger the command from the `azure-operator` repo.
+
 ## [2.1.0] - 2020-11-30
 
 ### Changed
