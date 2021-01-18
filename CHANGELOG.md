@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.0] - 2021-01-18
+
 ### Added
 
 - `jq` installed in Docker image.
@@ -70,7 +72,8 @@ passed via `--cluster`.
 - Removed `--wait` flag from `create` command.
 - Removed unused `test` command.
 
-[Unreleased]: https://github.com/giantswarm/standup/compare/v2.1.0...HEAD
+[Unreleased]: https://github.com/giantswarm/standup/compare/v2.2.0...HEAD
+[2.2.0]: https://github.com/giantswarm/standup/compare/v2.1.0...v2.2.0
 [2.1.0]: https://github.com/giantswarm/standup/compare/v2.0.0...v2.1.0
 [2.0.0]: https://github.com/giantswarm/standup/compare/v1.1.1...v2.0.0
 [1.1.1]: https://github.com/giantswarm/standup/compare/v1.1.0...v1.1.1
