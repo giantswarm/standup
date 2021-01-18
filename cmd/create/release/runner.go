@@ -20,9 +20,7 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
-	"sigs.k8s.io/yaml"
 
-	"github.com/giantswarm/standup/pkg/git"
 	"github.com/giantswarm/standup/pkg/key"
 )
 
@@ -81,63 +79,34 @@ func findReleaseInDiff(diff string) (releasePath string, provider string, err er
 }
 
 func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
-	var release v1alpha1.Release
+	var err error
 	var provider string
-	var releaseVersion string
-	r.logger.LogCtx(ctx, "message", "determining release to test")
-	{
-		var releasePath string
-		{
-			// Tekton checks out the current commit in detached HEAD state with --depth=1.
-			// This means we need to fetch origin/master before we can determine the changed files.
-			err := git.Fetch(r.flag.Releases)
-			if err != nil {
-				return microerror.Mask(err)
-			}
+	var release *v1alpha1.Release
 
-			mergeBase, err := git.MergeBase(r.flag.Releases)
-			if err != nil {
-				return microerror.Mask(err)
-			}
-
-			// Use "git diff" to find the release under test
-			diff, err := git.Diff(r.flag.Releases, mergeBase)
-			if err != nil {
-				return microerror.Mask(err)
-			}
-
-			// Parse the git diff to get the release file, version, and provider
-			releasePath, provider, err = findReleaseInDiff(diff)
-			if err != nil {
-				return microerror.Mask(err)
-			}
-			releasePath = filepath.Join(r.flag.Releases, releasePath)
-		}
-
-		r.logger.LogCtx(ctx, "message", "determined target release to test is "+releasePath)
-
-		releaseYAML, err := ioutil.ReadFile(releasePath)
+	switch r.flag.Mode {
+	case modeAzureOperator:
+		release, provider, err = r.generateReleaseFromAzureOperatorRepo(ctx)
 		if err != nil {
 			return microerror.Mask(err)
 		}
-
-		err = yaml.Unmarshal(releaseYAML, &release)
+	case modeReleases:
+		release, provider, err = r.generateReleaseFromReleasesRepo(ctx)
 		if err != nil {
 			return microerror.Mask(err)
 		}
-
-		// Randomize the name to avoid duplicate names.
-		originalName := release.Name
-		release.Name = generateReleaseName(release.Name)
-		releaseVersion = strings.TrimPrefix(release.Name, "v")
-		r.logger.LogCtx(ctx, "message", fmt.Sprintf("testing release %s for %s as %s", strings.TrimPrefix(originalName, "v"), provider, releaseVersion))
-
-		// Label for future garbage collection
-		if release.Labels == nil {
-			release.Labels = map[string]string{}
-		}
-		release.Labels["giantswarm.io/testing"] = "true"
 	}
+
+	// Randomize the name to avoid duplicate names.
+	originalName := release.Name
+	release.Name = generateReleaseName(release.Name)
+	releaseVersion := strings.TrimPrefix(release.Name, "v")
+	r.logger.LogCtx(ctx, "message", fmt.Sprintf("testing release %s for %s as %s", strings.TrimPrefix(originalName, "v"), provider, releaseVersion))
+
+	// Label for future garbage collection
+	if release.Labels == nil {
+		release.Labels = map[string]string{}
+	}
+	release.Labels["giantswarm.io/testing"] = "true"
 
 	kubeconfigPath := key.KubeconfigPath(r.flag.Kubeconfig, provider)
 
@@ -179,7 +148,7 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 	// Create the Release CR
 	r.logger.LogCtx(ctx, "message", "creating release CR")
 	{
-		_, err := k8sClient.G8sClient().ReleaseV1alpha1().Releases().Create(ctx, &release, v1.CreateOptions{})
+		_, err := k8sClient.G8sClient().ReleaseV1alpha1().Releases().Create(ctx, release, v1.CreateOptions{})
 		if err != nil {
 			return microerror.Mask(err)
 		}

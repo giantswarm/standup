@@ -20,6 +20,15 @@ func IsInvalidFlag(err error) bool {
 	return microerror.Cause(err) == invalidFlagError
 }
 
+var invalidRepositoryError = &microerror.Error{
+	Kind: "invalidRepositoryError",
+}
+
+// IsInvalidRepository asserts invalidRepositoryError.
+func IsInvalidRepository(err error) bool {
+	return microerror.Cause(err) == invalidRepositoryError
+}
+
 var releaseNotFoundError = &microerror.Error{
 	Kind: "releaseNotFoundError",
 }

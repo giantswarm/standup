@@ -55,6 +55,20 @@ func MergeBase(dir string) (string, error) {
 	return strings.TrimSpace(mergeBase), nil
 }
 
+func HeadSHA(dir string) (string, error) {
+	// Get repo's HEAD SHA.
+	argsArr := []string{
+		"rev-parse",
+		"HEAD",
+	}
+	repoName, err := runGit(argsArr, dir)
+	if err != nil {
+		return "", microerror.Mask(err)
+	}
+
+	return strings.TrimSpace(repoName), nil
+}
+
 func runGit(args []string, dir string) (string, error) {
 	cmd := exec.Command("git", args...)
 	cmd.Dir = dir
