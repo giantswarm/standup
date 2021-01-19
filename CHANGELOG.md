@@ -7,14 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+
 ### Added
 
 - Added new command `create test-operator-release` that takes the latest release and creates a new one with the latest version of the provider operator.
+
+## [2.3.0] - 2021-01-19
 
 ### Changed
 
 - Update to giantswarm/apiextensions 2.6.1.
 - Update to giantswarm/k8sclient 4.0.0.
+
+### Fixed
+
+- `jq` installed in the right place.
 
 ## [2.2.0] - 2021-01-18
 
@@ -81,7 +88,8 @@ passed via `--cluster`.
 - Removed `--wait` flag from `create` command.
 - Removed unused `test` command.
 
-[Unreleased]: https://github.com/giantswarm/standup/compare/v2.2.0...HEAD
+[Unreleased]: https://github.com/giantswarm/standup/compare/v2.3.0...HEAD
+[2.3.0]: https://github.com/giantswarm/standup/compare/v2.2.0...v2.3.0
 [2.2.0]: https://github.com/giantswarm/standup/compare/v2.1.0...v2.2.0
 [2.1.0]: https://github.com/giantswarm/standup/compare/v2.0.0...v2.1.0
 [2.0.0]: https://github.com/giantswarm/standup/compare/v1.1.1...v2.0.0
