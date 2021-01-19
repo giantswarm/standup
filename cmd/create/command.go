@@ -10,6 +10,7 @@ import (
 
 	"github.com/giantswarm/standup/cmd/create/cluster"
 	"github.com/giantswarm/standup/cmd/create/release"
+	"github.com/giantswarm/standup/cmd/create/testoperatorrelease"
 )
 
 const (
@@ -64,6 +65,20 @@ func New(config Config) (*cobra.Command, error) {
 		}
 	}
 
+	var testOperatorRelease *cobra.Command
+	{
+		c := testoperatorrelease.Config{
+			Logger: config.Logger,
+			Stderr: config.Stderr,
+			Stdout: config.Stdout,
+		}
+
+		testOperatorRelease, err = testoperatorrelease.New(c)
+		if err != nil {
+			return nil, microerror.Mask(err)
+		}
+	}
+
 	f := &flag{}
 
 	r := &runner{
@@ -85,6 +100,7 @@ func New(config Config) (*cobra.Command, error) {
 
 	c.AddCommand(clusterCmd)
 	c.AddCommand(releaseCmd)
+	c.AddCommand(testOperatorRelease)
 
 	return c, nil
 }

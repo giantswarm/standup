@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+
+### Added
+
+- Added new command `create test-operator-release` that takes the latest release and creates a new one with the latest version of the provider operator.
+
 ## [2.3.0] - 2021-01-19
 
 ### Changed
