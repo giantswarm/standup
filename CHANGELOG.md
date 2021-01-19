@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Update to giantswarm/apiextensions 2.6.1.
 - Update to giantswarm/k8sclient 4.0.0.
 
+### Fixed
+
+- `jq` installed in the right place.
+
 ## [2.2.0] - 2021-01-18
 
 ### Added
