@@ -97,89 +97,87 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 
 func (r *runner) createRelease(ctx context.Context, release *v1alpha1.Release) error {
 	// Create release in the management cluster.
+	kubeconfigPath := key.KubeconfigPath(r.flag.Kubeconfig, r.flag.Provider)
+
+	// Create REST config for the control plane
+	var restConfig *rest.Config
 	{
-		kubeconfigPath := key.KubeconfigPath(r.flag.Kubeconfig, r.flag.Provider)
-
-		// Create REST config for the control plane
-		var restConfig *rest.Config
-		{
-			var err error
-			restConfig, err = clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
-				&clientcmd.ClientConfigLoadingRules{ExplicitPath: kubeconfigPath},
-				&clientcmd.ConfigOverrides{}).ClientConfig()
-			if err != nil {
-				return microerror.Mask(err)
-			}
+		var err error
+		restConfig, err = clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
+			&clientcmd.ClientConfigLoadingRules{ExplicitPath: kubeconfigPath},
+			&clientcmd.ConfigOverrides{}).ClientConfig()
+		if err != nil {
+			return microerror.Mask(err)
 		}
-
-		// Create k8s clients for the control plane
-		var k8sClient k8sclient.Interface
-		{
-			var err error
-			k8sClient, err = k8sclient.NewClients(k8sclient.ClientsConfig{
-				Logger:     r.logger,
-				RestConfig: restConfig,
-			})
-			if err != nil {
-				return microerror.Mask(err)
-			}
-		}
-
-		// Write provider to filesystem
-		{
-			providerPath := filepath.Join(r.flag.Output, "provider")
-			r.logger.LogCtx(ctx, "message", fmt.Sprintf("writing provider to path %s", providerPath))
-			err := ioutil.WriteFile(providerPath, []byte(r.flag.Provider), 0644)
-			if err != nil {
-				return microerror.Mask(err)
-			}
-		}
-
-		// Create the Release CR
-		r.logger.LogCtx(ctx, "message", "creating release CR")
-		{
-			_, err := k8sClient.G8sClient().ReleaseV1alpha1().Releases().Create(ctx, release, v1.CreateOptions{})
-			if err != nil {
-				return microerror.Mask(err)
-			}
-		}
-		r.logger.LogCtx(ctx, "message", "created release CR")
-
-		// Write release ID to filesystem
-		{
-			releaseIDPath := filepath.Join(r.flag.Output, "release-id")
-			r.logger.LogCtx(ctx, "message", fmt.Sprintf("writing release ID to path %s", releaseIDPath))
-			err := ioutil.WriteFile(releaseIDPath, []byte(release.Name), 0644)
-			if err != nil {
-				return microerror.Mask(err)
-			}
-		}
-
-		// Wait for the created release to be ready
-		r.logger.LogCtx(ctx, "message", "waiting for release to be ready")
-		{
-			o := func() error {
-				toCheck, err := k8sClient.G8sClient().ReleaseV1alpha1().Releases().Get(ctx, release.Name, v1.GetOptions{})
-				if err != nil {
-					return backoff.Permanent(err)
-				}
-				if !toCheck.Status.Ready {
-					r.logger.LogCtx(ctx, "message", "release is not ready yet")
-					return microerror.Mask(releaseNotReadyError)
-				}
-
-				return nil
-			}
-			// Retry basically forever, the tekton task will determine maximum runtime.
-			b := backoff.NewMaxRetries(^uint64(0), 20*time.Second)
-
-			err := backoff.Retry(o, b)
-			if err != nil {
-				return microerror.Mask(err)
-			}
-		}
-		r.logger.LogCtx(ctx, "message", "release is ready")
 	}
+
+	// Create k8s clients for the control plane
+	var k8sClient k8sclient.Interface
+	{
+		var err error
+		k8sClient, err = k8sclient.NewClients(k8sclient.ClientsConfig{
+			Logger:     r.logger,
+			RestConfig: restConfig,
+		})
+		if err != nil {
+			return microerror.Mask(err)
+		}
+	}
+
+	// Write provider to filesystem
+	{
+		providerPath := filepath.Join(r.flag.Output, "provider")
+		r.logger.LogCtx(ctx, "message", fmt.Sprintf("writing provider to path %s", providerPath))
+		err := ioutil.WriteFile(providerPath, []byte(r.flag.Provider), 0644)
+		if err != nil {
+			return microerror.Mask(err)
+		}
+	}
+
+	// Create the Release CR
+	r.logger.LogCtx(ctx, "message", "creating release CR")
+	{
+		_, err := k8sClient.G8sClient().ReleaseV1alpha1().Releases().Create(ctx, release, v1.CreateOptions{})
+		if err != nil {
+			return microerror.Mask(err)
+		}
+	}
+	r.logger.LogCtx(ctx, "message", "created release CR")
+
+	// Write release ID to filesystem
+	{
+		releaseIDPath := filepath.Join(r.flag.Output, "release-id")
+		r.logger.LogCtx(ctx, "message", fmt.Sprintf("writing release ID to path %s", releaseIDPath))
+		err := ioutil.WriteFile(releaseIDPath, []byte(release.Name), 0644)
+		if err != nil {
+			return microerror.Mask(err)
+		}
+	}
+
+	// Wait for the created release to be ready
+	r.logger.LogCtx(ctx, "message", "waiting for release to be ready")
+	{
+		o := func() error {
+			toCheck, err := k8sClient.G8sClient().ReleaseV1alpha1().Releases().Get(ctx, release.Name, v1.GetOptions{})
+			if err != nil {
+				return backoff.Permanent(err)
+			}
+			if !toCheck.Status.Ready {
+				r.logger.LogCtx(ctx, "message", "release is not ready yet")
+				return microerror.Mask(releaseNotReadyError)
+			}
+
+			return nil
+		}
+		// Retry basically forever, the tekton task will determine maximum runtime.
+		b := backoff.NewMaxRetries(^uint64(0), 20*time.Second)
+
+		err := backoff.Retry(o, b)
+		if err != nil {
+			return microerror.Mask(err)
+		}
+	}
+	r.logger.LogCtx(ctx, "message", "release is ready")
 
 	return nil
 }
