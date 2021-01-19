@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Update to giantswarm/apiextensions 2.6.1.
+- Update to giantswarm/k8sclient 4.0.0.
+
 ## [2.2.0] - 2021-01-18
 
 ### Added
