@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/blang/semver"
+	"github.com/Masterminds/semver/v3"
 	"github.com/giantswarm/apiextensions/v2/pkg/apis/release/v1alpha1"
 	"github.com/giantswarm/backoff"
 	"github.com/giantswarm/k8sclient/v4/pkg/k8sclient"
@@ -201,14 +201,14 @@ func (r *runner) findLatestRelease(ctx context.Context) (*v1alpha1.Release, erro
 			}
 
 			// Try to parse version.
-			version, err := semver.Parse(strings.TrimPrefix(f.Name(), "v"))
+			version, err := semver.NewVersion(strings.TrimPrefix(f.Name(), "v"))
 			if err != nil {
 				r.logger.LogCtx(ctx, "level", "debug", "message", fmt.Sprintf("Unable to parse semver version from %q", f.Name()))
 				continue
 			}
 
-			if latest == nil || version.GT(*latest) {
-				latest = &version
+			if latest == nil || version.GreaterThan(latest) {
+				latest = version
 			}
 		}
 
