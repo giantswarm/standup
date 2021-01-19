@@ -40,6 +40,20 @@ func Fetch(dir string) error {
 	return nil
 }
 
+func HeadSHA(dir string) (string, error) {
+	// Get repo's HEAD SHA.
+	argsArr := []string{
+		"rev-parse",
+		"HEAD",
+	}
+	repoName, err := runGit(argsArr, dir)
+	if err != nil {
+		return "", microerror.Mask(err)
+	}
+
+	return strings.TrimSpace(repoName), nil
+}
+
 func MergeBase(dir string) (string, error) {
 	// Fetch master so we can diff against it
 	argsArr := []string{
