@@ -11,7 +11,7 @@ import (
 
 const (
 	name        = "test-operator-release"
-	description = "Clones the latest release and updates azure-operator and other components as needed."
+	description = "Clones the latest release and updates the release operator."
 )
 
 type Config struct {
