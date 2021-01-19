@@ -46,7 +46,7 @@ func (f *flag) Validate() error {
 		return microerror.Maskf(invalidFlagError, "--%s is required", flagProvider)
 	}
 	if f.Provider != "azure" && f.Provider != "aws" {
-		return microerror.Maskf(invalidFlagError, "The only supported providers are 'azure' and 'aws'", flagProvider)
+		return microerror.Maskf(invalidFlagError, "The only supported providers are 'azure' and 'aws'")
 	}
 	if f.ReleasesPath == "" {
 		return microerror.Maskf(invalidFlagError, "--%s is required", flagReleasesPath)
