@@ -111,9 +111,6 @@ func (r *runner) updateFromRequests(ctx context.Context, release *v1alpha1.Relea
 		}
 	}
 
-	m, _ := yaml.Marshal(release)
-	fmt.Println(string(m))
-
 	return nil
 }
 
