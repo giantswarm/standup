@@ -115,6 +115,7 @@ func (r *runner) updateFromRequests(ctx context.Context, release *v1alpha1.Relea
 }
 
 func affects(r request, targetVersion semver.Version) (bool, error) {
+	// lemmas are expressions like '> 12.0.0, < 13.0.0'
 	lemmas := strings.Split(r.Name, ",")
 
 	for _, lemma := range lemmas {
