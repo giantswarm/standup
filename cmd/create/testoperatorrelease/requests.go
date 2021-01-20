@@ -179,6 +179,7 @@ func affects(r request, targetVersion semver.Version) (bool, error) {
 	return true, nil
 }
 
+// The mergeRequirements func takes a requests file and computes the list of applications and their minimum version.
 func (r *runner) mergeRequirements(ctx context.Context, reqs requests, targetVersion semver.Version) (map[string]string, error) {
 	apps := map[string]string{}
 
