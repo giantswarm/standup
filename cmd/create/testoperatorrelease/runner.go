@@ -92,13 +92,11 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 		release.Labels["giantswarm.io/testing"] = "true"
 	}
 
-	fmt.Println("DONE")
-
 	// Create release CR.
-	//err = r.createRelease(ctx, release)
-	//if err != nil {
-	//	return microerror.Mask(err)
-	//}
+	err = r.createRelease(ctx, release)
+	if err != nil {
+		return microerror.Mask(err)
+	}
 
 	return nil
 }
