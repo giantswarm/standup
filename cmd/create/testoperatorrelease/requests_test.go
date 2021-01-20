@@ -216,7 +216,7 @@ func TestMergeRequirements(t *testing.T) {
 				},
 			},
 			expected: map[string]string{
-				"app-operator": "1.0.0",
+				"app-operator": "1.1.0",
 			},
 			errorMatcher: nil,
 		},
@@ -246,7 +246,7 @@ func TestMergeRequirements(t *testing.T) {
 				},
 			},
 			expected: map[string]string{
-				"app-operator":   "1.0.0",
+				"app-operator":   "1.1.0",
 				"azure-operator": "2.1.0",
 			},
 			errorMatcher: nil,
@@ -286,7 +286,7 @@ func TestMergeRequirements(t *testing.T) {
 				t.Fatalf("error == %#v, want matching", err)
 			}
 
-			if reflect.DeepEqual(tc.expected, result) {
+			if !reflect.DeepEqual(tc.expected, result) {
 				t.Fatalf("\n\nExpected %v, got %v\n", tc.expected, result)
 			}
 		})
