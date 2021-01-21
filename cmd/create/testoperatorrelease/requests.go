@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
-	"regexp"
 	"strings"
 
 	"github.com/Masterminds/semver/v3"
@@ -114,84 +113,18 @@ func (r *runner) updateFromRequests(ctx context.Context, release *v1alpha1.Relea
 	return nil
 }
 
-func affects(r request, targetVersion semver.Version) (bool, error) {
-	// lemmas are expressions like '> 12.0.0, < 13.0.0'
-	lemmas := strings.Split(r.Name, ",")
-
-	for _, lemma := range lemmas {
-		lemma := strings.TrimSpace(lemma)
-
-		firstChar := lemma[0:1]
-		if firstChar == ">" || firstChar == "<" || firstChar == "=" {
-			// > 13.0.2, < 12.0.0, >= 13.0.0, <= 13.0.1, = 13.0.0
-			tokens := strings.Split(lemma, " ")
-			if len(tokens) != 2 {
-				return false, microerror.Maskf(invalidRequestError, "Unable to parse lemma %q", lemma)
-			}
-			operator := tokens[0]
-			// We assume the version in this case is without wildcards.
-			version, err := semver.NewVersion(tokens[1])
-			if err != nil {
-				return false, microerror.Mask(err)
-			}
-
-			switch operator {
-			case ">":
-				// Does not match if it is <=.
-				if targetVersion.LessThan(version) || targetVersion.Equal(version) {
-					return false, nil
-				}
-			case ">=":
-				// Does not match if it is <.
-				if targetVersion.LessThan(version) {
-					return false, nil
-				}
-			case "<":
-				// Does not match if it is >=.
-				if targetVersion.GreaterThan(version) || targetVersion.Equal(version) {
-					return false, nil
-				}
-			case "<=":
-				// Does not match if it is >.
-				if targetVersion.GreaterThan(version) {
-					return false, nil
-				}
-			case "=":
-				// Does not match if it is !=.
-				if !targetVersion.Equal(version) {
-					return false, nil
-				}
-			default:
-				return false, microerror.Maskf(invalidRequestError, "Unrecognized operator %q", operator)
-			}
-		} else {
-			// Wildcard things like "12.*"
-			reg := strings.ReplaceAll(lemma, ".", "\\.")
-			reg = strings.ReplaceAll(reg, "*", ".*")
-			re := regexp.MustCompile(reg)
-
-			if !re.Match([]byte(targetVersion.String())) {
-				return false, nil
-			}
-		}
-	}
-
-	return true, nil
-}
-
 // The mergeRequirements func takes a requests file and computes the list of applications and their minimum version.
 func (r *runner) mergeRequirements(ctx context.Context, reqs requests, targetVersion semver.Version) (map[string]string, error) {
 	apps := map[string]string{}
 
 	for _, req := range reqs.Releases {
 		// Check if the release is affected.
-		affected, err := affects(req, targetVersion)
+		constraint, err := semver.NewConstraint(req.Name)
 		if err != nil {
-			r.logger.LogCtx(ctx, "level", "warning", "msg", fmt.Sprintf("Unable to check if rule named %q affects version %q: %s", req.Name, targetVersion.String(), err))
-			continue
+			return nil, microerror.Mask(err)
 		}
 
-		if affected {
+		if constraint.Check(&targetVersion) {
 			for _, appreq := range req.Requests {
 				if !strings.HasPrefix(appreq.Version, ">=") {
 					r.logger.LogCtx(ctx, "level", "warning", "msg", fmt.Sprintf("Unable to parse app request %q: doesn't start with '>='", appreq.Version))
