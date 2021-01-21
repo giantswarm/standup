@@ -64,6 +64,12 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 		return microerror.Mask(err)
 	}
 
+	// Update release apps and components based on the "requests.yaml" file.
+	err = r.updateFromRequests(ctx, release)
+	if err != nil {
+		return microerror.Mask(err)
+	}
+
 	// Update release with current version of provider operator and required dependencies.
 	err = r.updateRelease(ctx, release)
 	if err != nil {
@@ -284,6 +290,14 @@ func (r *runner) updateRelease(ctx context.Context, release *v1alpha1.Release) e
 			break
 		}
 	}
+
+	// Override date.
+	release.Spec.Date = &v1.Time{
+		Time: time.Now(),
+	}
+
+	// Mark as WIP.
+	release.Spec.State = v1alpha1.StateWIP
 
 	return nil
 }
