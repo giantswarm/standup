@@ -106,7 +106,7 @@ func (r *runner) updateFromRequests(ctx context.Context, release *v1alpha1.Relea
 		}
 
 		if !found {
-			r.logger.LogCtx(ctx, "level", "warning", "message", fmt.Sprintf("Adding a new component from the requirements is not currently supported. Tried to add %s", appname))
+			r.logger.LogCtx(ctx, "level", "warning", "message", fmt.Sprintf("found unknown component %q from requests.yaml while it's not present in latest release.yaml; skipping", appname))
 		}
 	}
 
