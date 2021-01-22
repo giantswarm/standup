@@ -7,8 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [2.4.0] - 2021-01-19
+### Changed
 
+- The organization that owns the created cluster is chosen randomly among the existing organizations that contain the `giantswarm.io/conformance-testing` label.
+
+## [2.4.0] - 2021-01-19
 
 ### Added
 

@@ -5,16 +5,22 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"math/rand"
 	"path/filepath"
 	"time"
 
 	"github.com/giantswarm/backoff"
+	"github.com/giantswarm/k8sclient/v4/pkg/k8sclient"
 	"github.com/giantswarm/microerror"
 	"github.com/giantswarm/micrologger"
 	"github.com/spf13/cobra"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 
 	"github.com/giantswarm/standup/pkg/config"
 	"github.com/giantswarm/standup/pkg/gsclient"
+	"github.com/giantswarm/standup/pkg/key"
 )
 
 type runner struct {
@@ -41,6 +47,33 @@ func (r *runner) Run(cmd *cobra.Command, args []string) error {
 }
 
 func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
+	kubeconfigPath := key.KubeconfigPath(r.flag.Kubeconfig, r.flag.Provider)
+
+	// Create REST config for the control plane
+	var restConfig *rest.Config
+	{
+		var err error
+		restConfig, err = clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
+			&clientcmd.ClientConfigLoadingRules{ExplicitPath: kubeconfigPath},
+			&clientcmd.ConfigOverrides{}).ClientConfig()
+		if err != nil {
+			return microerror.Mask(err)
+		}
+	}
+
+	// Create k8s clients for the control plane
+	var k8sClient k8sclient.Interface
+	{
+		var err error
+		k8sClient, err = k8sclient.NewClients(k8sclient.ClientsConfig{
+			Logger:     r.logger,
+			RestConfig: restConfig,
+		})
+		if err != nil {
+			return microerror.Mask(err)
+		}
+	}
+
 	var providerConfig *config.ProviderConfig
 	{
 		var err error
@@ -69,12 +102,29 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 		}
 	}
 
+	var organization string
+	{
+		options := v1.ListOptions{
+			LabelSelector: fmt.Sprintf("%s=%s", "giantswarm.io/conformance-testing", "true"),
+		}
+		organizations, err := k8sClient.G8sClient().SecurityV1alpha1().Organizations().List(ctx, options)
+		if err != nil {
+			return microerror.Mask(err)
+		}
+		if len(organizations.Items) == 0 {
+			return microerror.Mask(notAvailableOrganizationError)
+		}
+
+		rand.Seed(time.Now().Unix())
+		organization = organizations.Items[rand.Intn(len(organizations.Items))].Name
+	}
+
 	// Create the cluster under test
 	var clusterID string
 	r.logger.LogCtx(ctx, "message", "creating cluster using target release")
 	{
 		var err error
-		clusterID, err = gsClient.CreateCluster(ctx, r.flag.Release)
+		clusterID, err = gsClient.CreateCluster(ctx, organization, r.flag.Release)
 		if err != nil {
 			return microerror.Mask(err)
 		}
@@ -91,12 +141,12 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 		}
 	}
 
-	kubeconfigPath := filepath.Join(r.flag.Output, "kubeconfig")
-	r.logger.LogCtx(ctx, "message", fmt.Sprintf("creating and writing kubeconfig for cluster %s to path %s", clusterID, kubeconfigPath))
+	clusterKubeconfigPath := filepath.Join(r.flag.Output, "kubeconfig")
+	r.logger.LogCtx(ctx, "message", fmt.Sprintf("creating and writing kubeconfig for cluster %s to path %s", clusterID, clusterKubeconfigPath))
 	{
 		o := func() error {
 			// Create a keypair and kubeconfig for the new tenant cluster
-			err := gsClient.CreateKubeconfig(ctx, clusterID, kubeconfigPath)
+			err := gsClient.CreateKubeconfig(ctx, clusterID, clusterKubeconfigPath)
 			if err != nil {
 				r.logger.LogCtx(ctx, "message", "error creating kubeconfig", "error", err)
 				return microerror.Mask(err)

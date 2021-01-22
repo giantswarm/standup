@@ -9,7 +9,7 @@ import (
 	"github.com/giantswarm/standup/pkg/key"
 )
 
-func (c *Client) CreateCluster(ctx context.Context, releaseVersion string) (string, error) {
+func (c *Client) CreateCluster(ctx context.Context, organizationName, releaseVersion string) (string, error) {
 	err := c.authenticate(ctx)
 	if err != nil {
 		return "", microerror.Mask(err)
@@ -17,7 +17,7 @@ func (c *Client) CreateCluster(ctx context.Context, releaseVersion string) (stri
 
 	createOptions := GsctlCreateClusterOptions{
 		OutputType: OutputTypeJSON,
-		Owner:      key.ClusterOwnerName,
+		Owner:      organizationName,
 		Name:       releaseVersion,
 		Release:    releaseVersion,
 	}
