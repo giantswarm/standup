@@ -9,14 +9,15 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/giantswarm/apiextensions/v2/pkg/apis/security/v1alpha1"
 	"github.com/giantswarm/backoff"
-	"github.com/giantswarm/k8sclient/v4/pkg/k8sclient"
 	"github.com/giantswarm/microerror"
 	"github.com/giantswarm/micrologger"
 	"github.com/spf13/cobra"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/giantswarm/standup/pkg/config"
 	"github.com/giantswarm/standup/pkg/gsclient"
@@ -28,6 +29,20 @@ type runner struct {
 	logger micrologger.Logger
 	stdout io.Writer
 	stderr io.Writer
+}
+
+var Scheme = runtime.NewScheme()
+
+func init() {
+	rand.Seed(time.Now().Unix())
+
+	schemeBuilder := runtime.SchemeBuilder{
+		v1alpha1.AddToScheme,
+	}
+	err := schemeBuilder.AddToScheme(Scheme)
+	if err != nil {
+		panic(err)
+	}
 }
 
 func (r *runner) Run(cmd *cobra.Command, args []string) error {
@@ -61,17 +76,9 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 		}
 	}
 
-	// Create k8s clients for the control plane
-	var k8sClient k8sclient.Interface
-	{
-		var err error
-		k8sClient, err = k8sclient.NewClients(k8sclient.ClientsConfig{
-			Logger:     r.logger,
-			RestConfig: restConfig,
-		})
-		if err != nil {
-			return microerror.Mask(err)
-		}
+	ctrl, err := client.New(rest.CopyConfig(restConfig), client.Options{Scheme: Scheme})
+	if err != nil {
+		return microerror.Mask(err)
 	}
 
 	var providerConfig *config.ProviderConfig
@@ -104,10 +111,11 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 
 	var organization string
 	{
-		options := v1.ListOptions{
-			LabelSelector: fmt.Sprintf("%s=%s", "giantswarm.io/conformance-testing", "true"),
+		labelSelector := client.MatchingLabels{
+			"giantswarm.io/conformance-testing": "true",
 		}
-		organizations, err := k8sClient.G8sClient().SecurityV1alpha1().Organizations().List(ctx, options)
+		organizations := &v1alpha1.OrganizationList{}
+		err = ctrl.List(ctx, organizations, labelSelector)
 		if err != nil {
 			return microerror.Mask(err)
 		}
@@ -115,7 +123,6 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 			return microerror.Mask(notAvailableOrganizationError)
 		}
 
-		rand.Seed(time.Now().Unix())
 		organization = organizations.Items[rand.Intn(len(organizations.Items))].Name
 	}
 
