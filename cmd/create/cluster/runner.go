@@ -128,7 +128,7 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 
 	// Create the cluster under test
 	var clusterID string
-	r.logger.LogCtx(ctx, "message", "creating cluster using target release")
+	r.logger.LogCtx(ctx, "message", fmt.Sprintf("creating cluster using target release %s and organization %s", r.flag.Release, organization))
 	{
 		var err error
 		clusterID, err = gsClient.CreateCluster(ctx, organization, r.flag.Release)
