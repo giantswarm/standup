@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Use "latest release" next patch version when creating new release for testing an operator.
+
 ## [2.5.0] - 2021-01-26
 
 ### Changed

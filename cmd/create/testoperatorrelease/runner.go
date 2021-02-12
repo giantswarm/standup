@@ -76,10 +76,19 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 		return microerror.Mask(err)
 	}
 
+	// If latest release is `v14.1.0`, the created release needs to be newer so
+	// it can't be `v14.1.0-something`, it needs to be at least `v14.1.1-something`.
+	version, err := semver.NewVersion(release.Name)
+	if err != nil {
+		return microerror.Mask(err)
+	}
+
+	nextPatch := version.IncPatch()
+
 	// Randomize the name to avoid duplicate names.
 	{
 		originalName := release.Name
-		release.Name = generateReleaseName(release.Name)
+		release.Name = generateReleaseName(fmt.Sprintf("v%s", nextPatch.String()))
 		releaseVersion := strings.TrimPrefix(release.Name, "v")
 		r.logger.LogCtx(ctx, "message", fmt.Sprintf("testing release %s for %s as %s", strings.TrimPrefix(originalName, "v"), provider, releaseVersion))
 	}
