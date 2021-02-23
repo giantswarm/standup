@@ -149,6 +149,33 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 	}
 	r.logger.LogCtx(ctx, "message", "deleted cluster")
 
+	if r.flag.Provider == "kvm" {
+		// KVM specific logic to wait for the KVMConfig to be gone before deleting the release
+		// TODO: This can be reverted once cluster-service returns deleting clusters for KVM
+		r.logger.LogCtx(ctx, "message", "waiting for kvmconfig deletion")
+		{
+			// Wait for the KVMConfig to be deleted
+			o := func() error {
+				_, err := k8sClient.G8sClient().ProviderV1alpha1().KVMConfigs(v1.NamespaceDefault).Get(ctx, r.flag.ClusterID, v1.GetOptions{})
+				if apierrors.IsNotFound(err) {
+					return nil
+				} else if err != nil {
+					return backoff.Permanent(err)
+				}
+				r.logger.LogCtx(ctx, "message", "waiting for kvmconfig deletion")
+				return microerror.Mask(notYetDeletedError)
+			}
+			// Retry basically forever, the tekton task will determine maximum runtime.
+			b := backoff.NewMaxRetries(^uint64(0), 20*time.Second)
+
+			err := backoff.Retry(o, b)
+			if err != nil {
+				return microerror.Mask(err)
+			}
+		}
+		r.logger.LogCtx(ctx, "message", "kvmconfig has been deleted")
+	}
+
 	// Delete the Release CR
 	r.logger.LogCtx(ctx, "message", "deleting release CR")
 	{
