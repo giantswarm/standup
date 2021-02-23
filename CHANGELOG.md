@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Wait for KVMConfig deletion before deleting release (KVM only).
+
 ## [2.6.0] - 2021-02-12
 
 ### Changed
