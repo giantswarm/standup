@@ -209,9 +209,8 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 	}
 	r.logger.LogCtx(ctx, "message", "deleted release CR")
 
-	r.logger.LogCtx(ctx, "message", fmt.Sprintf("checking the namespace %#q deletion", r.flag.ClusterID))
+	r.logger.LogCtx(ctx, "message", fmt.Sprintf("deleting namespace %#q", r.flag.ClusterID))
 	{
-		r.logger.LogCtx(ctx, "message", fmt.Sprintf("waiting the namespace %#q deletion", r.flag.ClusterID))
 		{
 			// Wait for the cluster namespace to be deleted
 			o := func() error {
@@ -231,7 +230,7 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 				return microerror.Mask(err)
 			}
 		}
-		r.logger.LogCtx(ctx, "message", fmt.Sprintf("the namespace %#q has been deleted", r.flag.ClusterID))
+		r.logger.LogCtx(ctx, "message", fmt.Sprintf("namespace %#q has been deleted", r.flag.ClusterID))
 	}
 
 	r.logger.LogCtx(ctx, "message", "teardown complete")
