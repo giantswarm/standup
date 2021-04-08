@@ -209,7 +209,7 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 	}
 	r.logger.LogCtx(ctx, "message", "deleted release CR")
 
-	r.logger.LogCtx(ctx, "message", fmt.Sprintf("deleting namespace %#q", r.flag.ClusterID))
+	r.logger.LogCtx(ctx, "message", fmt.Sprintf("waiting for %#q namespace deletion", r.flag.ClusterID))
 	{
 		{
 			// Wait for the cluster namespace to be deleted
