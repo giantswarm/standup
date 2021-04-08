@@ -2,6 +2,7 @@ package cleanup
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"time"
 
@@ -207,6 +208,31 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 		}
 	}
 	r.logger.LogCtx(ctx, "message", "deleted release CR")
+
+	r.logger.LogCtx(ctx, "message", fmt.Sprintf("waiting for %#q namespace deletion", r.flag.ClusterID))
+	{
+		{
+			// Wait for the cluster namespace to be deleted
+			o := func() error {
+				_, err := k8sClient.K8sClient().CoreV1().Namespaces().Get(ctx, r.flag.ClusterID, v1.GetOptions{})
+				if apierrors.IsNotFound(err) {
+					return nil
+				} else if err != nil {
+					return backoff.Permanent(err)
+				}
+				return microerror.Mask(notYetDeletedError)
+			}
+			// Retry basically forever, the tekton task will determine maximum runtime.
+			b := backoff.NewMaxRetries(^uint64(0), 20*time.Second)
+
+			err := backoff.Retry(o, b)
+			if err != nil {
+				return microerror.Mask(err)
+			}
+		}
+		r.logger.LogCtx(ctx, "message", fmt.Sprintf("namespace %#q has been deleted", r.flag.ClusterID))
+	}
+
 	r.logger.LogCtx(ctx, "message", "teardown complete")
 
 	return nil

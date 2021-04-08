@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Check the cluster namespace deletion from a cleanup task.
+
 ### Fixed
 
 - Wait for KVMConfig deletion before deleting release (KVM only).
