@@ -170,7 +170,7 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 	{
 		providerPath := filepath.Join(r.flag.Output, "provider")
 		r.logger.LogCtx(ctx, "message", fmt.Sprintf("writing provider to path %s", providerPath))
-		err := ioutil.WriteFile(providerPath, []byte(provider), 0644)
+		err := ioutil.WriteFile(providerPath, []byte(provider), 0644) //#nosec
 		if err != nil {
 			return microerror.Mask(err)
 		}
@@ -190,7 +190,7 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 	{
 		releaseIDPath := filepath.Join(r.flag.Output, "release-id")
 		r.logger.LogCtx(ctx, "message", fmt.Sprintf("writing release ID to path %s", releaseIDPath))
-		err := ioutil.WriteFile(releaseIDPath, []byte(release.Name), 0644)
+		err := ioutil.WriteFile(releaseIDPath, []byte(release.Name), 0644) //#nosec
 		if err != nil {
 			return microerror.Mask(err)
 		}
