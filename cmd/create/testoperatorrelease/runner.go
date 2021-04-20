@@ -143,7 +143,7 @@ func (r *runner) createRelease(ctx context.Context, release *v1alpha1.Release) e
 	{
 		providerPath := filepath.Join(r.flag.Output, "provider")
 		r.logger.LogCtx(ctx, "message", fmt.Sprintf("writing provider to path %s", providerPath))
-		err := ioutil.WriteFile(providerPath, []byte(r.flag.Provider), 0644)
+		err := ioutil.WriteFile(providerPath, []byte(r.flag.Provider), 0644) //#nosec
 		if err != nil {
 			return microerror.Mask(err)
 		}
@@ -163,7 +163,7 @@ func (r *runner) createRelease(ctx context.Context, release *v1alpha1.Release) e
 	{
 		releaseIDPath := filepath.Join(r.flag.Output, "release-id")
 		r.logger.LogCtx(ctx, "message", fmt.Sprintf("writing release ID to path %s", releaseIDPath))
-		err := ioutil.WriteFile(releaseIDPath, []byte(release.Name), 0644)
+		err := ioutil.WriteFile(releaseIDPath, []byte(release.Name), 0644) //#nosec
 		if err != nil {
 			return microerror.Mask(err)
 		}
