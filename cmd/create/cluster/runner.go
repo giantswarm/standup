@@ -123,7 +123,7 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 			return microerror.Mask(notAvailableOrganizationError)
 		}
 
-		organization = organizations.Items[rand.Intn(len(organizations.Items))].Name
+		organization = organizations.Items[rand.Intn(len(organizations.Items))].Name //#nosec
 	}
 
 	// Create the cluster under test
@@ -142,7 +142,7 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 	{
 		clusterIDPath := filepath.Join(r.flag.Output, "cluster-id")
 		r.logger.LogCtx(ctx, "message", fmt.Sprintf("writing cluster ID to path %s", clusterIDPath))
-		err := ioutil.WriteFile(clusterIDPath, []byte(clusterID), 0644)
+		err := ioutil.WriteFile(clusterIDPath, []byte(clusterID), 0644) //#nosec
 		if err != nil {
 			return microerror.Mask(err)
 		}
