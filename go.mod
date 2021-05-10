@@ -13,9 +13,9 @@ require (
 	github.com/go-openapi/runtime v0.19.20 // indirect
 	github.com/google/go-cmp v0.5.5
 	github.com/spf13/cobra v1.1.3
-	k8s.io/api v0.18.9
-	k8s.io/apimachinery v0.18.9
-	k8s.io/client-go v0.18.9
+	k8s.io/api v0.18.18
+	k8s.io/apimachinery v0.18.18
+	k8s.io/client-go v0.18.18
 	k8s.io/utils v0.0.0-20200731180307-f00132d28269 // indirect
 	sigs.k8s.io/controller-runtime v0.6.4
 	sigs.k8s.io/yaml v1.2.0
