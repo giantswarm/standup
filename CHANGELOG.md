@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Replace `jwt-go` with `golang-jwt/jwt`.
+
 ## [2.7.0] - 2021-04-08
 
 ### Changed
