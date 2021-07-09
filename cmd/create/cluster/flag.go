@@ -45,7 +45,7 @@ func (f *flag) Validate() error {
 			return microerror.Maskf(invalidFlagError, "--%s must be a valid semantic version", flagRelease)
 		}
 		if f.Provider == "" {
-			return microerror.Maskf(invalidFlagError, "--%s must be specified when defining an exact release version", flagRelease)
+			return microerror.Maskf(invalidFlagError, "--%s must be specified when defining an exact release version", flagProvider)
 		}
 	}
 

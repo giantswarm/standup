@@ -7,19 +7,19 @@ import (
 
 const (
 	flagConfig       = "config"
+	flagInstallation = "installation"
 	flagKubeconfig   = "kubeconfig"
 	flagOperatorPath = "operator-path"
 	flagOutput       = "output"
-	flagProvider     = "provider"
 	flagReleasesPath = "releases-path"
 )
 
 type flag struct {
 	Config       string
+	Installation string
 	Kubeconfig   string
 	OperatorPath string
 	Output       string
-	Provider     string
 	ReleasesPath string
 }
 
@@ -45,7 +45,7 @@ func (f *flag) Validate() error {
 	if f.Provider == "" {
 		return microerror.Maskf(invalidFlagError, "--%s is required", flagProvider)
 	}
-	if f.Provider != "azure" && f.Provider != "aws" {
+	if f.Provider != "azure" && f.Provider != "aws" && f.Provider != "aws-china" {
 		return microerror.Maskf(invalidFlagError, "The only supported providers are 'azure' and 'aws'")
 	}
 	if f.OperatorPath == "" {
