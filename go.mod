@@ -12,7 +12,7 @@ require (
 	github.com/giantswarm/micrologger v0.5.0
 	github.com/go-openapi/runtime v0.19.20 // indirect
 	github.com/google/go-cmp v0.5.6
-	github.com/spf13/cobra v1.1.3
+	github.com/spf13/cobra v1.2.1
 	k8s.io/api v0.18.19
 	k8s.io/apimachinery v0.18.19
 	k8s.io/client-go v0.18.19
