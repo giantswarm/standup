@@ -62,7 +62,7 @@ func (r *runner) Run(cmd *cobra.Command, args []string) error {
 }
 
 func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
-	kubeconfigPath := key.KubeconfigPath(r.flag.Kubeconfig, r.flag.Provider)
+	kubeconfigPath := key.KubeconfigPath(r.flag.Kubeconfig, r.flag.Installation)
 
 	// Create REST config for the control plane
 	var restConfig *rest.Config
@@ -84,7 +84,7 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 	var providerConfig *config.ProviderConfig
 	{
 		var err error
-		providerConfig, err = config.LoadProviderConfig(r.flag.Config, r.flag.Provider)
+		providerConfig, err = config.LoadProviderConfig(r.flag.Config, r.flag.Installation)
 		if err != nil {
 			return microerror.Mask(err)
 		}
