@@ -2,8 +2,9 @@ package testoperatorrelease
 
 import (
 	"github.com/giantswarm/microerror"
-	"github.com/giantswarm/standup/pkg/key"
 	"github.com/spf13/cobra"
+
+	"github.com/giantswarm/standup/pkg/key"
 )
 
 const (
