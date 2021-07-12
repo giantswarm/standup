@@ -11,16 +11,16 @@ const (
 	flagConfig     = "config"
 	flagKubeconfig = "kubeconfig"
 	flagOutput     = "output"
+	flagPipeline   = "pipeline"
 	flagReleases   = "releases"
-	flagTask       = "task"
 )
 
 type flag struct {
 	Config     string
 	Kubeconfig string
 	Output     string
+	Pipeline   string
 	Releases   string
-	Task       string
 }
 
 func (f *flag) Init(cmd *cobra.Command) {
@@ -28,7 +28,7 @@ func (f *flag) Init(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&f.Kubeconfig, flagKubeconfig, "k", "", `The path to the directory containing the kubeconfigs for provider control planes.`)
 	cmd.Flags().StringVar(&f.Output, flagOutput, "", `The directory in which to store the release name of the created release.`)
 	cmd.Flags().StringVarP(&f.Releases, flagReleases, "s", "", `The path of the releases repo on the local filesystem.`)
-	cmd.Flags().StringVarP(&f.Task, flagTask, "t", key.DefaultTaskName, `The name of the task in which standup is currently running.`)
+	cmd.Flags().StringVarP(&f.Pipeline, flagPipeline, "t", key.DefaultPipelineName, `The name of the task in which standup is currently running.`)
 }
 
 func (f *flag) Validate() error {

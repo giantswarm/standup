@@ -12,9 +12,9 @@ const (
 	flagKubeconfig   = "kubeconfig"
 	flagOperatorPath = "operator-path"
 	flagOutput       = "output"
+	flagPipeline     = "pipeline"
 	flagProvider     = "provider"
 	flagReleasesPath = "releases-path"
-	flagTask         = "task"
 )
 
 type flag struct {
@@ -22,9 +22,9 @@ type flag struct {
 	Kubeconfig   string
 	OperatorPath string
 	Output       string
+	Pipeline     string
 	Provider     string
 	ReleasesPath string
-	Task         string
 }
 
 func (f *flag) Init(cmd *cobra.Command) {
@@ -34,7 +34,7 @@ func (f *flag) Init(cmd *cobra.Command) {
 	cmd.Flags().StringVar(&f.Output, flagOutput, "", `The directory in which to store the release name of the created release.`)
 	cmd.Flags().StringVar(&f.Provider, flagProvider, "", `The cloud provider to clone the release for.`)
 	cmd.Flags().StringVar(&f.ReleasesPath, flagReleasesPath, "", `The path of the releases repo on the local filesystem.`)
-	cmd.Flags().StringVarP(&f.Task, flagTask, "t", key.DefaultTaskName, `The name of the task in which standup is currently running.`)
+	cmd.Flags().StringVarP(&f.Pipeline, flagPipeline, "t", key.DefaultPipelineName, `The name of the pipeline in which standup is currently running.`)
 }
 
 func (f *flag) Validate() error {

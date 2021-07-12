@@ -113,8 +113,8 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 func (r *runner) createRelease(ctx context.Context, release *v1alpha1.Release) error {
 	var installation string
 	{
-		// If this task overrides the target installation, set it. Otherwise use the provider as the target name.
-		if i := key.GetInstallationForTask(r.flag.Task); i != "" {
+		// If this pipeline overrides the target installation, set it. Otherwise use the provider as the target name.
+		if i := key.GetInstallationForPipeline(r.flag.Pipeline); i != "" {
 			installation = i
 		} else {
 			installation = r.flag.Provider

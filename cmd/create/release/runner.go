@@ -117,8 +117,8 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 
 		r.logger.LogCtx(ctx, "message", "determined target release to test is "+releasePath)
 
-		// If this task overrides the target installation, set it. Otherwise use the provider as the target name.
-		if i := key.GetInstallationForTask(r.flag.Task); i != "" {
+		// If this pipeline overrides the target installation, set it. Otherwise use the provider as the target name.
+		if i := key.GetInstallationForPipeline(r.flag.Pipeline); i != "" {
 			installation = i
 		} else {
 			installation = provider
