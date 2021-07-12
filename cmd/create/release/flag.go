@@ -3,6 +3,8 @@ package release
 import (
 	"github.com/giantswarm/microerror"
 	"github.com/spf13/cobra"
+
+	"github.com/giantswarm/standup/pkg/key"
 )
 
 const (
@@ -26,7 +28,7 @@ func (f *flag) Init(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&f.Kubeconfig, flagKubeconfig, "k", "", `The path to the directory containing the kubeconfigs for provider control planes.`)
 	cmd.Flags().StringVar(&f.Output, flagOutput, "", `The directory in which to store the release name of the created release.`)
 	cmd.Flags().StringVarP(&f.Releases, flagReleases, "s", "", `The path of the releases repo on the local filesystem.`)
-	cmd.Flags().StringVarP(&f.Task, flagTask, "p", "", `The name of the task in which standup is currently running.`)
+	cmd.Flags().StringVarP(&f.Task, flagTask, "t", key.DefaultTaskName, `The name of the task in which standup is currently running.`)
 }
 
 func (f *flag) Validate() error {

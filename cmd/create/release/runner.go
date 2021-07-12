@@ -118,7 +118,7 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 		r.logger.LogCtx(ctx, "message", "determined target release to test is "+releasePath)
 
 		// If this task overrides the target installation, set it. Otherwise use the provider as the target name.
-		if i := getInstallationForTask(r.flag.Task); i != "" {
+		if i := key.GetInstallationForTask(r.flag.Task); i != "" {
 			installation = i
 		} else {
 			installation = provider
@@ -176,7 +176,7 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 		}
 	}
 
-	// Write the provider to filesystem
+	// Write the provider name to the filesystem
 	{
 		providerPath := filepath.Join(r.flag.Output, "provider")
 		r.logger.LogCtx(ctx, "message", fmt.Sprintf("writing provider (%s) to path %s", provider, providerPath))
@@ -186,7 +186,7 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 		}
 	}
 
-	// Write the target installation name to filesystem
+	// Write the target installation name to the filesystem
 	{
 		installationPath := filepath.Join(r.flag.Output, "installation")
 		r.logger.LogCtx(ctx, "message", fmt.Sprintf("writing target installation (%s) to path %s", installation, installationPath))
@@ -253,13 +253,4 @@ func generateReleaseName(name string) string {
 	}
 
 	return strings.Replace(name, m[4], testSuffix, 1)
-}
-
-func getInstallationForTask(taskName string) string {
-	taskConfig, ok := key.TaskConfigs[taskName]
-	if ok {
-		return taskConfig.Installation
-	}
-
-	return ""
 }
