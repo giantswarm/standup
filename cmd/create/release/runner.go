@@ -83,6 +83,7 @@ func findReleaseInDiff(diff string) (releasePath string, provider string, err er
 func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 	var release v1alpha1.Release
 	var provider string
+	var installation string
 	var releaseVersion string
 	r.logger.LogCtx(ctx, "message", "determining release to test")
 	{
@@ -116,6 +117,15 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 
 		r.logger.LogCtx(ctx, "message", "determined target release to test is "+releasePath)
 
+		// If this pipeline overrides the target installation, set it. Otherwise use the provider as the target name.
+		if i := key.GetInstallationForPipeline(r.flag.Pipeline); i != "" {
+			installation = i
+		} else {
+			installation = provider
+		}
+
+		r.logger.LogCtx(ctx, "message", "determined target installation is "+installation)
+
 		releaseYAML, err := ioutil.ReadFile(releasePath)
 		if err != nil {
 			return microerror.Mask(err)
@@ -139,7 +149,7 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 		release.Labels["giantswarm.io/testing"] = "true"
 	}
 
-	kubeconfigPath := key.KubeconfigPath(r.flag.Kubeconfig, provider)
+	kubeconfigPath := key.KubeconfigPath(r.flag.Kubeconfig, installation)
 
 	// Create REST config for the control plane
 	var restConfig *rest.Config
@@ -166,11 +176,21 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 		}
 	}
 
-	// Write provider to filesystem
+	// Write the provider name to the filesystem
 	{
 		providerPath := filepath.Join(r.flag.Output, "provider")
-		r.logger.LogCtx(ctx, "message", fmt.Sprintf("writing provider to path %s", providerPath))
+		r.logger.LogCtx(ctx, "message", fmt.Sprintf("writing provider (%s) to path %s", provider, providerPath))
 		err := ioutil.WriteFile(providerPath, []byte(provider), 0644) //#nosec
+		if err != nil {
+			return microerror.Mask(err)
+		}
+	}
+
+	// Write the target installation name to the filesystem
+	{
+		installationPath := filepath.Join(r.flag.Output, "installation")
+		r.logger.LogCtx(ctx, "message", fmt.Sprintf("writing target installation (%s) to path %s", installation, installationPath))
+		err := ioutil.WriteFile(installationPath, []byte(installation), 0644) //#nosec
 		if err != nil {
 			return microerror.Mask(err)
 		}

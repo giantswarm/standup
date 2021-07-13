@@ -111,8 +111,18 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 }
 
 func (r *runner) createRelease(ctx context.Context, release *v1alpha1.Release) error {
+	var installation string
+	{
+		// If this pipeline overrides the target installation, set it. Otherwise use the provider as the target name.
+		if i := key.GetInstallationForPipeline(r.flag.Pipeline); i != "" {
+			installation = i
+		} else {
+			installation = r.flag.Provider
+		}
+	}
+
 	// Create release in the management cluster.
-	kubeconfigPath := key.KubeconfigPath(r.flag.Kubeconfig, r.flag.Provider)
+	kubeconfigPath := key.KubeconfigPath(r.flag.Kubeconfig, installation)
 
 	// Create REST config for the control plane
 	var restConfig *rest.Config
@@ -144,6 +154,16 @@ func (r *runner) createRelease(ctx context.Context, release *v1alpha1.Release) e
 		providerPath := filepath.Join(r.flag.Output, "provider")
 		r.logger.LogCtx(ctx, "message", fmt.Sprintf("writing provider to path %s", providerPath))
 		err := ioutil.WriteFile(providerPath, []byte(r.flag.Provider), 0644) //#nosec
+		if err != nil {
+			return microerror.Mask(err)
+		}
+	}
+
+	// Write the target installation name to the filesystem
+	{
+		installationPath := filepath.Join(r.flag.Output, "installation")
+		r.logger.LogCtx(ctx, "message", fmt.Sprintf("writing target installation (%s) to path %s", installation, installationPath))
+		err := ioutil.WriteFile(installationPath, []byte(installation), 0644) //#nosec
 		if err != nil {
 			return microerror.Mask(err)
 		}

@@ -48,7 +48,7 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 	var providerConfig *config.ProviderConfig
 	{
 		var err error
-		providerConfig, err = config.LoadProviderConfig(r.flag.Config, r.flag.Provider)
+		providerConfig, err = config.LoadProviderConfig(r.flag.Config, r.flag.Installation)
 		if err != nil {
 			return microerror.Mask(err)
 		}
@@ -73,7 +73,7 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 		}
 	}
 
-	kubeconfigPath := key.KubeconfigPath(r.flag.Kubeconfig, r.flag.Provider)
+	kubeconfigPath := key.KubeconfigPath(r.flag.Kubeconfig, r.flag.Installation)
 
 	// Create REST config for the control plane
 	var restConfig *rest.Config
@@ -150,7 +150,7 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 	}
 	r.logger.LogCtx(ctx, "message", "deleted cluster")
 
-	if r.flag.Provider == "kvm" {
+	if r.flag.Installation == "kvm" {
 		// KVM specific logic to wait for the KVMConfig to be gone before deleting the release
 		// TODO: This can be reverted once cluster-service returns deleting clusters for KVM
 		r.logger.LogCtx(ctx, "message", "waiting for kvmconfig deletion")

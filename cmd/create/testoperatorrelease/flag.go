@@ -3,6 +3,8 @@ package testoperatorrelease
 import (
 	"github.com/giantswarm/microerror"
 	"github.com/spf13/cobra"
+
+	"github.com/giantswarm/standup/pkg/key"
 )
 
 const (
@@ -10,6 +12,7 @@ const (
 	flagKubeconfig   = "kubeconfig"
 	flagOperatorPath = "operator-path"
 	flagOutput       = "output"
+	flagPipeline     = "pipeline"
 	flagProvider     = "provider"
 	flagReleasesPath = "releases-path"
 )
@@ -19,6 +22,7 @@ type flag struct {
 	Kubeconfig   string
 	OperatorPath string
 	Output       string
+	Pipeline     string
 	Provider     string
 	ReleasesPath string
 }
@@ -30,6 +34,7 @@ func (f *flag) Init(cmd *cobra.Command) {
 	cmd.Flags().StringVar(&f.Output, flagOutput, "", `The directory in which to store the release name of the created release.`)
 	cmd.Flags().StringVar(&f.Provider, flagProvider, "", `The cloud provider to clone the release for.`)
 	cmd.Flags().StringVar(&f.ReleasesPath, flagReleasesPath, "", `The path of the releases repo on the local filesystem.`)
+	cmd.Flags().StringVarP(&f.Pipeline, flagPipeline, "t", key.DefaultPipelineName, `The name of the pipeline in which standup is currently running.`)
 }
 
 func (f *flag) Validate() error {

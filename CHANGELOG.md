@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## Added
+
+- Add `installation` and `pipeline` flags to some commands and support pipeline overrides (support testing AWS China).
+
 ### Changed
 
 - Replace `jwt-go` with `golang-jwt/jwt`.
