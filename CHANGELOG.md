@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.0.0] - 2021-07-13
+
 ## Added
 
 - Add `installation` and `pipeline` flags to some commands and support pipeline overrides (support testing AWS China).
@@ -119,7 +121,8 @@ passed via `--cluster`.
 - Removed `--wait` flag from `create` command.
 - Removed unused `test` command.
 
-[Unreleased]: https://github.com/giantswarm/standup/compare/v2.7.0...HEAD
+[Unreleased]: https://github.com/giantswarm/standup/compare/v3.0.0...HEAD
+[3.0.0]: https://github.com/giantswarm/standup/compare/v2.7.0...v3.0.0
 [2.7.0]: https://github.com/giantswarm/standup/compare/v2.6.0...v2.7.0
 [2.6.0]: https://github.com/giantswarm/standup/compare/v2.5.0...v2.6.0
 [2.5.0]: https://github.com/giantswarm/standup/compare/v2.4.0...v2.5.0
