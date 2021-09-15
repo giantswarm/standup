@@ -14,6 +14,9 @@ func (r *runner) applyTemplates(ctx context.Context, templates []string, ctrl cl
 	for _, data := range templates {
 		raw := map[string]interface{}{}
 		err := yaml.Unmarshal([]byte(data), &raw)
+		if err != nil {
+			return microerror.Mask(err)
+		}
 
 		u := &unstructured.Unstructured{}
 		u.Object = raw
