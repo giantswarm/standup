@@ -62,31 +62,92 @@ func (r *runner) Run(cmd *cobra.Command, args []string) error {
 }
 
 func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
+	var err error
+
 	kubeconfigPath := key.KubeconfigPath(r.flag.Kubeconfig, r.flag.Installation)
 
-	// Create REST config for the control plane
-	var restConfig *rest.Config
+	var ctrl client.Client
 	{
-		var err error
-		restConfig, err = clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
-			&clientcmd.ClientConfigLoadingRules{ExplicitPath: kubeconfigPath},
-			&clientcmd.ConfigOverrides{}).ClientConfig()
+		// Create REST config for the control plane
+		var restConfig *rest.Config
+		{
+			var err error
+			restConfig, err = clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
+				&clientcmd.ClientConfigLoadingRules{ExplicitPath: kubeconfigPath},
+				&clientcmd.ConfigOverrides{}).ClientConfig()
+			if err != nil {
+				return microerror.Mask(err)
+			}
+		}
+
+		ctrl, err = client.New(rest.CopyConfig(restConfig), client.Options{Scheme: Scheme})
 		if err != nil {
 			return microerror.Mask(err)
 		}
 	}
 
-	ctrl, err := client.New(rest.CopyConfig(restConfig), client.Options{Scheme: Scheme})
-	if err != nil {
-		return microerror.Mask(err)
+	var organization string
+	{
+		labelSelector := client.MatchingLabels{
+			"giantswarm.io/conformance-testing": "true",
+		}
+		organizations := &v1alpha1.OrganizationList{}
+		err := ctrl.List(ctx, organizations, labelSelector)
+		if err != nil {
+			return microerror.Mask(err)
+		}
+		if len(organizations.Items) == 0 {
+			return microerror.Mask(notAvailableOrganizationError)
+		}
+
+		organization = organizations.Items[rand.Intn(len(organizations.Items))].Name //#nosec
 	}
 
+	var clusterID string
+	{
+		if key.IsCapiRelease(r.flag.Release) {
+			switch r.flag.Installation {
+			case "aws":
+				clusterID, err = r.createCapaCluster(ctx, ctrl, organization)
+				if err != nil {
+					return microerror.Mask(err)
+				}
+			case "azure":
+				clusterID, err = r.createCapzCluster(ctx, ctrl, organization)
+				if err != nil {
+					return microerror.Mask(err)
+				}
+			default:
+				return microerror.Maskf(unsupportedProviderError, fmt.Sprintf("Unsupported CAPI provider %q", r.flag.Installation))
+			}
+		} else {
+			clusterID, err = r.createGsCluster(ctx, ctrl, organization)
+			if err != nil {
+				return microerror.Mask(err)
+			}
+		}
+	}
+
+	// Write cluster ID to filesystem
+	{
+		clusterIDPath := filepath.Join(r.flag.Output, "cluster-id")
+		r.logger.LogCtx(ctx, "message", fmt.Sprintf("writing cluster ID to path %s", clusterIDPath))
+		err := ioutil.WriteFile(clusterIDPath, []byte(clusterID), 0644) //#nosec
+		if err != nil {
+			return microerror.Mask(err)
+		}
+	}
+
+	return nil
+}
+
+func (r *runner) createGsCluster(ctx context.Context, ctrl client.Client, organization string) (string, error) {
 	var providerConfig *config.ProviderConfig
 	{
 		var err error
 		providerConfig, err = config.LoadProviderConfig(r.flag.Config, r.flag.Installation)
 		if err != nil {
-			return microerror.Mask(err)
+			return "", microerror.Mask(err)
 		}
 	}
 
@@ -105,25 +166,8 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 		var err error
 		gsClient, err = gsclient.New(c)
 		if err != nil {
-			return microerror.Mask(err)
+			return "", microerror.Mask(err)
 		}
-	}
-
-	var organization string
-	{
-		labelSelector := client.MatchingLabels{
-			"giantswarm.io/conformance-testing": "true",
-		}
-		organizations := &v1alpha1.OrganizationList{}
-		err = ctrl.List(ctx, organizations, labelSelector)
-		if err != nil {
-			return microerror.Mask(err)
-		}
-		if len(organizations.Items) == 0 {
-			return microerror.Mask(notAvailableOrganizationError)
-		}
-
-		organization = organizations.Items[rand.Intn(len(organizations.Items))].Name //#nosec
 	}
 
 	// Create the cluster under test
@@ -133,20 +177,10 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 		var err error
 		clusterID, err = gsClient.CreateCluster(ctx, organization, r.flag.Release)
 		if err != nil {
-			return microerror.Mask(err)
+			return "", microerror.Mask(err)
 		}
 	}
 	r.logger.LogCtx(ctx, "message", fmt.Sprintf("created cluster %s", clusterID))
-
-	// Write cluster ID to filesystem
-	{
-		clusterIDPath := filepath.Join(r.flag.Output, "cluster-id")
-		r.logger.LogCtx(ctx, "message", fmt.Sprintf("writing cluster ID to path %s", clusterIDPath))
-		err := ioutil.WriteFile(clusterIDPath, []byte(clusterID), 0644) //#nosec
-		if err != nil {
-			return microerror.Mask(err)
-		}
-	}
 
 	clusterKubeconfigPath := filepath.Join(r.flag.Output, "kubeconfig")
 	r.logger.LogCtx(ctx, "message", fmt.Sprintf("creating and writing kubeconfig for cluster %s to path %s", clusterID, clusterKubeconfigPath))
@@ -165,11 +199,11 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 
 		err := backoff.Retry(o, b)
 		if err != nil {
-			return microerror.Mask(err)
+			return "", microerror.Mask(err)
 		}
 	}
 
 	r.logger.LogCtx(ctx, "message", "setup complete")
 
-	return nil
+	return clusterID, nil
 }

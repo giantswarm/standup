@@ -2,6 +2,8 @@ package key
 
 import (
 	"fmt"
+
+	"github.com/giantswarm/standup/pkg/normalize"
 )
 
 const (
@@ -58,6 +60,12 @@ func IsCapiRelease(releaseName string) bool {
 
 func KubeconfigPath(base, provider string) (path string) {
 	return fmt.Sprintf("%s/%s", base, provider)
+}
+
+func OrganizationNamespaceFromName(name string) string {
+	name = normalize.AsDNSLabelName(fmt.Sprintf("org-%s", name))
+
+	return name
 }
 
 func PipelineConfigs() map[string]PipelineConfig {

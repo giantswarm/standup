@@ -28,3 +28,21 @@ var notAvailableOrganizationError = &microerror.Error{
 func IsNotAvailableOrganization(err error) bool {
 	return microerror.Cause(err) == notAvailableOrganizationError
 }
+
+var notImplementedError = &microerror.Error{
+	Kind: "notImplementedError",
+}
+
+// IsNotImplemented asserts notImplementedError.
+func IsNotImplemented(err error) bool {
+	return microerror.Cause(err) == notImplementedError
+}
+
+var unsupportedProviderError = &microerror.Error{
+	Kind: "unsupportedProviderError",
+}
+
+// IsUnsupportedProvider asserts unsupportedProviderError.
+func IsUnsupportedProvider(err error) bool {
+	return microerror.Cause(err) == unsupportedProviderError
+}

@@ -9,7 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Avoid creating and deleting a test release for CAPI releases. 
+- Avoid creating and deleting a test release for CAPI releases.
+- Support for creating CAPZ clusters.
 
 ## [3.0.0] - 2021-07-13
 
