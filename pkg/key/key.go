@@ -3,7 +3,7 @@ package key
 import (
 	"fmt"
 
-	"github.com/giantswarm/standup/pkg/normalize"
+	"github.com/giantswarm/kubectl-gs/pkg/normalize"
 )
 
 const (
