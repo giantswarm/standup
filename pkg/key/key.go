@@ -52,6 +52,10 @@ func GetPipelineConfigByName(pipelineName string) (bool, PipelineConfig) {
 	return ok, PipelineConfig{}
 }
 
+func IsCapiRelease(releaseName string) bool {
+	return releaseName == "v20.0.0" || releaseName == "20.0.0"
+}
+
 func KubeconfigPath(base, provider string) (path string) {
 	return fmt.Sprintf("%s/%s", base, provider)
 }
