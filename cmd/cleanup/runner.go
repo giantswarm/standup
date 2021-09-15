@@ -177,37 +177,40 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 		r.logger.LogCtx(ctx, "message", "kvmconfig has been deleted")
 	}
 
-	// Delete the Release CR
-	r.logger.LogCtx(ctx, "message", "deleting release CR")
-	{
-		backgroundDeletion := v1.DeletionPropagation("Background")
-		err := k8sClient.G8sClient().ReleaseV1alpha1().Releases().Delete(ctx, releaseVersion, v1.DeleteOptions{
-			PropagationPolicy: &backgroundDeletion,
-		})
-		if err != nil {
-			return microerror.Mask(err)
-		}
-
-		// Wait for the release to be deleted
-		o := func() error {
-			_, err := k8sClient.G8sClient().ReleaseV1alpha1().Releases().Get(ctx, releaseVersion, v1.GetOptions{})
-			if apierrors.IsNotFound(err) {
-				return nil
-			} else if err != nil {
-				return backoff.Permanent(err)
+	// CAPI releases are a special case. We don't create a new release thus we don't want to delete it.
+	if !key.IsCapiRelease(releaseVersion) {
+		// Delete the Release CR
+		r.logger.LogCtx(ctx, "message", "deleting release CR")
+		{
+			backgroundDeletion := v1.DeletionPropagation("Background")
+			err := k8sClient.G8sClient().ReleaseV1alpha1().Releases().Delete(ctx, releaseVersion, v1.DeleteOptions{
+				PropagationPolicy: &backgroundDeletion,
+			})
+			if err != nil {
+				return microerror.Mask(err)
 			}
-			r.logger.LogCtx(ctx, "message", "waiting for release deletion")
-			return microerror.Mask(notYetDeletedError)
-		}
-		// Retry basically forever, the tekton task will determine maximum runtime.
-		b := backoff.NewMaxRetries(^uint64(0), 20*time.Second)
 
-		err = backoff.Retry(o, b)
-		if err != nil {
-			return microerror.Mask(err)
+			// Wait for the release to be deleted
+			o := func() error {
+				_, err := k8sClient.G8sClient().ReleaseV1alpha1().Releases().Get(ctx, releaseVersion, v1.GetOptions{})
+				if apierrors.IsNotFound(err) {
+					return nil
+				} else if err != nil {
+					return backoff.Permanent(err)
+				}
+				r.logger.LogCtx(ctx, "message", "waiting for release deletion")
+				return microerror.Mask(notYetDeletedError)
+			}
+			// Retry basically forever, the tekton task will determine maximum runtime.
+			b := backoff.NewMaxRetries(^uint64(0), 20*time.Second)
+
+			err = backoff.Retry(o, b)
+			if err != nil {
+				return microerror.Mask(err)
+			}
 		}
+		r.logger.LogCtx(ctx, "message", "deleted release CR")
 	}
-	r.logger.LogCtx(ctx, "message", "deleted release CR")
 
 	r.logger.LogCtx(ctx, "message", fmt.Sprintf("waiting for %#q namespace deletion", r.flag.ClusterID))
 	{

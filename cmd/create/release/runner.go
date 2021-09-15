@@ -136,17 +136,20 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 			return microerror.Mask(err)
 		}
 
-		// Randomize the name to avoid duplicate names.
-		originalName := release.Name
-		release.Name = generateReleaseName(release.Name)
-		releaseVersion = strings.TrimPrefix(release.Name, "v")
-		r.logger.LogCtx(ctx, "message", fmt.Sprintf("testing release %s for %s as %s", strings.TrimPrefix(originalName, "v"), provider, releaseVersion))
+		// CAPI releases are a special case. We don't create a new release but reuse existing one.
+		if !key.IsCapiRelease(release.Name) {
+			// Randomize the name to avoid duplicate names.
+			originalName := release.Name
+			release.Name = generateReleaseName(release.Name)
+			releaseVersion = strings.TrimPrefix(release.Name, "v")
+			r.logger.LogCtx(ctx, "message", fmt.Sprintf("testing release %s for %s as %s", strings.TrimPrefix(originalName, "v"), provider, releaseVersion))
 
-		// Label for future garbage collection
-		if release.Labels == nil {
-			release.Labels = map[string]string{}
+			// Label for future garbage collection
+			if release.Labels == nil {
+				release.Labels = map[string]string{}
+			}
+			release.Labels["giantswarm.io/testing"] = "true"
 		}
-		release.Labels["giantswarm.io/testing"] = "true"
 	}
 
 	kubeconfigPath := key.KubeconfigPath(r.flag.Kubeconfig, installation)
@@ -196,15 +199,18 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 		}
 	}
 
-	// Create the Release CR
-	r.logger.LogCtx(ctx, "message", "creating release CR")
-	{
-		_, err := k8sClient.G8sClient().ReleaseV1alpha1().Releases().Create(ctx, &release, v1.CreateOptions{})
-		if err != nil {
-			return microerror.Mask(err)
+	// CAPI releases are a special case. We don't create a new release but reuse existing one.
+	if !key.IsCapiRelease(release.Name) {
+		// Create the Release CR
+		r.logger.LogCtx(ctx, "message", "creating release CR")
+		{
+			_, err := k8sClient.G8sClient().ReleaseV1alpha1().Releases().Create(ctx, &release, v1.CreateOptions{})
+			if err != nil {
+				return microerror.Mask(err)
+			}
 		}
+		r.logger.LogCtx(ctx, "message", "created release CR")
 	}
-	r.logger.LogCtx(ctx, "message", "created release CR")
 
 	// Write release ID to filesystem
 	{
