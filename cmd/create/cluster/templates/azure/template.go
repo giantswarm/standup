@@ -25,7 +25,6 @@ var azureMachinePool string
 //go:embed kubeadm_config.yaml.tmpl
 var kubeadmConfig string
 
-// GetTemplates merges all .tmpl files.
 func GetTemplates() []string {
 	return []string{
 		cluster,
