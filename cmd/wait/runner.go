@@ -117,8 +117,8 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 					}
 				}
 			}
-			if nodeCount < 2 {
-				message := fmt.Sprintf("found %d registered nodes, waiting for at least 2", nodeCount)
+			if nodeCount < r.flag.DesiredNodesCount {
+				message := fmt.Sprintf("found %d registered nodes, waiting for at least %d", nodeCount, r.flag.DesiredNodesCount)
 				r.logger.LogCtx(ctx, "message", message)
 				return microerror.Mask(notReadyError)
 			}
