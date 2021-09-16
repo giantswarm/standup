@@ -175,7 +175,7 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 			}
 
 			if len(services.Items) == 0 {
-				message := fmt.Sprintf("CoreDNS service not found using label selector %#q", serviceLabelSelector)
+				message := fmt.Sprintf("CoreDNS service not found using label selectors %#q and %#q", serviceLabelSelector, alternateTargetLabels)
 				r.logger.LogCtx(ctx, "message", message)
 				return microerror.Mask(notReadyError)
 			}
