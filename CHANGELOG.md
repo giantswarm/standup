@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.2.0] - 2021-09-16
+
 ### Added
 
 - Add flag to specify the expected number of nodes to be ready in `wait ready` command.
@@ -132,7 +134,8 @@ passed via `--cluster`.
 - Removed `--wait` flag from `create` command.
 - Removed unused `test` command.
 
-[Unreleased]: https://github.com/giantswarm/standup/compare/v3.1.0...HEAD
+[Unreleased]: https://github.com/giantswarm/standup/compare/v3.2.0...HEAD
+[3.2.0]: https://github.com/giantswarm/standup/compare/v3.1.0...v3.2.0
 [3.1.0]: https://github.com/giantswarm/standup/compare/v3.0.0...v3.1.0
 [3.0.0]: https://github.com/giantswarm/standup/compare/v2.7.0...v3.0.0
 [2.7.0]: https://github.com/giantswarm/standup/compare/v2.6.0...v2.7.0
