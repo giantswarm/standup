@@ -142,9 +142,16 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 	{
 		r.logger.LogCtx(ctx, "message", "waiting for CoreDNS to be ready")
 
+		// Legacy GS clusters.
 		targetLabels := map[string]string{
 			"kubernetes.io/cluster-service": "true",
 			"kubernetes.io/name":            "CoreDNS",
+		}
+
+		// CAPI clusters.
+		alternateTargetLabels := map[string]string{
+			"kubernetes.io/cluster-service": "true",
+			"kubernetes.io/name":            "KubeDNS",
 		}
 
 		o := func() error {
@@ -157,7 +164,18 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 				return microerror.Mask(err)
 			}
 			if len(services.Items) == 0 {
-				message := fmt.Sprintf("CoreDNS service not found using label selector %#q", serviceLabelSelector)
+				serviceLabelSelector := labelsToSelector(alternateTargetLabels)
+				services, err = k8sClient.CoreV1().Services("kube-system").List(ctx, v1.ListOptions{
+					LabelSelector: serviceLabelSelector,
+				})
+				if err != nil {
+					r.logger.LogCtx(ctx, "message", "error listing services", "error", err)
+					return microerror.Mask(err)
+				}
+			}
+
+			if len(services.Items) == 0 {
+				message := fmt.Sprintf("CoreDNS service not found using label selectors %#q and %#q", serviceLabelSelector, alternateTargetLabels)
 				r.logger.LogCtx(ctx, "message", message)
 				return microerror.Mask(notReadyError)
 			}
