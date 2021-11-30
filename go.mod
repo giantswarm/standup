@@ -18,7 +18,7 @@ require (
 	k8s.io/client-go v0.18.19
 	k8s.io/utils v0.0.0-20200731180307-f00132d28269 // indirect
 	sigs.k8s.io/controller-runtime v0.6.4
-	sigs.k8s.io/yaml v1.2.0
+	sigs.k8s.io/yaml v1.3.0
 )
 
 replace (
