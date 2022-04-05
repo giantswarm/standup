@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Remove `giantswarm/apiextensions` dependency.
+- Upgrade `giantswarm/k8sclient` to `v7.0.1`.
+- Upgrade `sigs.k8s.io/controller-runtime` to `v0.10.3`.
+- Upgrade k8s dependencies to `v0.22.2`.
+
 ## [3.2.0] - 2021-09-16
 
 ### Added
