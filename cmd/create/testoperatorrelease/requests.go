@@ -10,8 +10,8 @@ import (
 	"github.com/Masterminds/semver/v3"
 	"sigs.k8s.io/yaml"
 
-	"github.com/giantswarm/apiextensions/v2/pkg/apis/release/v1alpha1"
 	"github.com/giantswarm/microerror"
+	"github.com/giantswarm/release-operator/v3/api/v1alpha1"
 )
 
 type apprequest struct {
