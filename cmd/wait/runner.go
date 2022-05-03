@@ -15,6 +15,8 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
+
+	"github.com/giantswarm/standup/pkg/utils"
 )
 
 type runner struct {
@@ -220,7 +222,10 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 	// We wait for external-dns for Azure and AWS. This prevents failures where
 	// the CNCF suite is started before external-dns is functional.
 	// This is not necessary on KVM as there is no external-dns app running.
-	if r.flag.Provider != "kvm" {
+
+	isExternalDNSSupported := utils.ProviderHasFeature(r.flag.Provider, "external-dns")
+
+	if isExternalDNSSupported {
 		r.logger.LogCtx(ctx, "message", "waiting for external-dns to be ready")
 
 		targetLabels := map[string]string{
