@@ -10,7 +10,7 @@ require (
 	github.com/giantswarm/errors v0.3.0
 	github.com/giantswarm/k8sclient/v4 v4.1.0
 	github.com/giantswarm/microerror v0.4.0
-	github.com/giantswarm/micrologger v0.6.0
+	github.com/giantswarm/micrologger v1.0.0
 	github.com/go-openapi/runtime v0.19.20 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/google/go-cmp v0.5.8
