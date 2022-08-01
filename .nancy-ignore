@@ -1,19 +1,20 @@
-CVE-2020-8911 until=2022-06-30
-CVE-2020-8912 until=2022-06-30
-CVE-2022-29153 until=2022-06-30
-CVE-2022-29153 until=2022-06-30
-CVE-2020-26892 until=2022-06-30
-CVE-2021-3127 until=2022-06-30
-CVE-2020-26892 until=2022-06-30
-CVE-2022-24450 until=2022-06-30
-CVE-2020-26521 until=2022-06-30
-CVE-2020-28466 until=2022-06-30
-CVE-2021-3127 until=2022-06-30
-CVE-2022-29946 until=2022-06-30
-CVE-2021-32026 until=2022-06-30
-CVE-2022-21698 until=2022-06-30
-CVE-2021-20329 until=2022-06-30
+# pkg:golang/github.com/hashicorp/consul/sdk@v0.3.0
+# pkg:golang/github.com/hashicorp/consul/api@v1.3.0
+CVE-2022-29153 until=2022-12-31
 
-sonatype-2020-1759 until=2022-06-30
-sonatype-2019-0702 until=2022-06-30
-sonatype-2021-1401 until=2022-06-30
+pkg:golang/github.com/nats-io/nats-server/v2@v2.1.2
+CVE-2020-26892 until=2022-12-31
+CVE-2022-24450 until=2022-12-31
+CVE-2020-26521 until=2022-12-31
+CVE-2020-28466 until=2022-12-31
+CVE-2021-3127 until=2022-12-31
+CVE-2022-29946 until=2022-12-31
+CVE-2021-32026 until=2022-12-31
+
+# pkg:golang/github.com/lucas-clemente/quic-go@v0.10.2
+# The current latest 0.28.1 has vulnerabilities
+CVE-2022-30591 until=2022-08-31
+
+# pkg:golang/github.com/caddyserver/caddy@v1.0.3
+CVE-2022-34037  until=2022-12-31
+CVE-2022-29718  until=2022-12-31
