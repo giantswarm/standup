@@ -4,7 +4,6 @@ go 1.14
 
 require (
 	github.com/Masterminds/semver/v3 v3.1.1
-	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/fsnotify/fsnotify v1.5.1 // indirect
 	github.com/giantswarm/apiextensions/v2 v2.6.2
 	github.com/giantswarm/backoff v1.0.0
@@ -14,19 +13,11 @@ require (
 	github.com/giantswarm/micrologger v0.6.0
 	github.com/go-openapi/runtime v0.19.20 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
-	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/google/go-cmp v0.5.8
-	github.com/google/uuid v1.1.2 // indirect
-	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/mitchellh/mapstructure v1.4.3 // indirect
 	github.com/spf13/cobra v1.4.0
-	go.uber.org/zap v1.17.0 // indirect
-	golang.org/x/crypto v0.0.0-20210817164053-32db794688a5 // indirect
-	golang.org/x/net v0.0.0-20210813160813-60bc85c4be6d // indirect
+	go.mongodb.org/mongo-driver v1.10.0 // indirect
 	golang.org/x/oauth2 v0.0.0-20211104180415-d3ed0bb246c8 // indirect
-	golang.org/x/sys v0.0.0-20211205182925-97ca703d548d // indirect
-	golang.org/x/text v0.3.7 // indirect
-	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/protobuf v1.27.1 // indirect
 	k8s.io/api v0.18.19
 	k8s.io/apimachinery v0.18.19
@@ -37,10 +28,17 @@ require (
 )
 
 replace (
+	github.com/aws/aws-sdk-go => github.com/aws/aws-sdk-go v1.44.66
 	github.com/coreos/etcd v3.3.10+incompatible => github.com/coreos/etcd v3.3.25+incompatible
 	github.com/coreos/etcd v3.3.13+incompatible => github.com/coreos/etcd v3.3.25+incompatible
 	github.com/dgrijalva/jwt-go => github.com/golang-jwt/jwt v3.2.1+incompatible
+	github.com/gobuffalo/packr/v2 => github.com/gobuffalo/packr/v2 v2.8.3
 	github.com/gogo/protobuf v1.3.1 => github.com/gogo/protobuf v1.3.2
 	github.com/gorilla/websocket v1.4.0 => github.com/gorilla/websocket v1.4.2
+	github.com/miekg/dns => github.com/miekg/dns v1.1.50
+	github.com/pkg/sftp => github.com/pkg/sftp v1.13.5
+	github.com/prometheus/client_golang v1.11.0 => github.com/prometheus/client_golang v1.12.2
+	github.com/prometheus/client_golang v1.5.1 => github.com/prometheus/client_golang v1.12.2
+	go.mongodb.org/mongo-driver v1.3.4 => go.mongodb.org/mongo-driver v1.10.0
 	sigs.k8s.io/cluster-api => github.com/giantswarm/cluster-api v0.3.10-gs
 )
