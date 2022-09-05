@@ -18,3 +18,8 @@ CVE-2022-30591 until=2022-08-31
 # pkg:golang/github.com/caddyserver/caddy@v1.0.3
 CVE-2022-34037  until=2022-12-31
 CVE-2022-29718  until=2022-12-31
+
+# pkg:golang/github.com/lucas-clemente/quic-go@v0.21.2
+# The latest version that we can upgrade to without a breaking change is v0.21.2
+# that has the same vulnerability
+CVE-2022-30591
