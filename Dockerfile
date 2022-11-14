@@ -1,4 +1,4 @@
-FROM quay.io/giantswarm/alpine:3.16.2 AS binaries
+FROM quay.io/giantswarm/alpine:3.16.3 AS binaries
 
 ARG KUBECTL_VERSION=1.18.9
 ARG GSCTL_VERSION=0.24.4
@@ -10,7 +10,7 @@ RUN apk add --no-cache ca-certificates curl \
        tar -C /binaries --strip-components 1 -xvzf - gsctl-${GSCTL_VERSION}-linux-amd64/gsctl \
     && chmod +x /binaries/*
 
-FROM quay.io/giantswarm/alpine:3.16.2 as base
+FROM quay.io/giantswarm/alpine:3.16.3 as base
 
 USER root
 RUN apk add --no-cache git jq
