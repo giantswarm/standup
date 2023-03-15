@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Wait for all charts to be in deployed state in `wait ready` command.
+
 ## [3.3.0] - 2022-05-03
 
 ### Added

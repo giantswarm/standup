@@ -7,14 +7,17 @@ import (
 	"io/ioutil"
 	"time"
 
+	applicationv1alpha1 "github.com/giantswarm/apiextensions/v3/pkg/apis/application/v1alpha1"
 	"github.com/giantswarm/backoff"
 	"github.com/giantswarm/errors/tenant"
+	"github.com/giantswarm/k8sclient/v5/pkg/k8sclient"
 	"github.com/giantswarm/microerror"
 	"github.com/giantswarm/micrologger"
 	"github.com/spf13/cobra"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/giantswarm/standup/pkg/utils"
 )
@@ -72,6 +75,24 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 	k8sClient, err := kubernetes.NewForConfig(restConfig)
 	if err != nil {
 		return microerror.Mask(err)
+	}
+
+	// Create ctrl client for the workload cluster
+	var ctrlClient client.Client
+	{
+		var err error
+		c, err := k8sclient.NewClients(k8sclient.ClientsConfig{
+			Logger: r.logger,
+			SchemeBuilder: k8sclient.SchemeBuilder{
+				applicationv1alpha1.AddToScheme,
+			},
+			RestConfig: restConfig,
+		})
+		if err != nil {
+			return microerror.Mask(err)
+		}
+
+		ctrlClient = c.CtrlClient()
 	}
 
 	{
@@ -283,6 +304,50 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 			return microerror.Mask(err)
 		}
 		r.logger.LogCtx(ctx, "message", "external-dns is ready")
+	}
+
+	// Wait for all charts to be deployed
+	r.logger.LogCtx(ctx, "message", "waiting for all chart CRs to be in deployed state")
+
+	o := func() error {
+		charts := applicationv1alpha1.ChartList{}
+		err = ctrlClient.List(ctx, &charts, client.InNamespace("giantswarm"))
+		if err != nil {
+			r.logger.LogCtx(ctx, "message", fmt.Sprintf("cannot list charts in namespace giantswarm: %s", err))
+			return microerror.Mask(notReadyError)
+		}
+
+		if len(charts.Items) < 2 {
+			r.logger.LogCtx(ctx, "message", fmt.Sprintf("Waiting for at least 2 Chart CRs to exist in giantswarm namespace, found %d", len(charts.Items)))
+			return microerror.Mask(notReadyError)
+		}
+
+		deployedCount := 0
+		notDeployed := make([]string, 0)
+		for _, chart := range charts.Items {
+			if chart.Status.Release.Status == "deployed" {
+				deployedCount = deployedCount + 1
+			} else {
+				notDeployed = append(notDeployed, chart.Name)
+			}
+		}
+
+		if len(notDeployed) > 0 {
+			r.logger.LogCtx(ctx, "message", fmt.Sprintf("%d charts are not deployed yet: %v", len(notDeployed), notDeployed))
+			return microerror.Mask(notReadyError)
+		}
+
+		r.logger.LogCtx(ctx, "message", fmt.Sprintf("all %d charts are deployed", deployedCount))
+
+		return nil
+	}
+
+	// Retry basically forever, the tekton task will determine maximum runtime.
+	b := backoff.NewMaxRetries(^uint64(0), 1*time.Minute)
+
+	err = backoff.Retry(o, b)
+	if err != nil {
+		return microerror.Mask(err)
 	}
 
 	return nil
