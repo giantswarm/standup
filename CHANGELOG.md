@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Wait for tenant API to be available before creating ctrl client in `wait ready`.
+
 ## [3.4.1] - 2023-03-15
 
 ### Fixed

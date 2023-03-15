@@ -77,24 +77,6 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 		return microerror.Mask(err)
 	}
 
-	// Create ctrl client for the workload cluster
-	var ctrlClient client.Client
-	{
-		var err error
-		c, err := k8sclient.NewClients(k8sclient.ClientsConfig{
-			Logger: r.logger,
-			SchemeBuilder: k8sclient.SchemeBuilder{
-				applicationv1alpha1.AddToScheme,
-			},
-			RestConfig: restConfig,
-		})
-		if err != nil {
-			return microerror.Mask(err)
-		}
-
-		ctrlClient = c.CtrlClient()
-	}
-
 	{
 		r.logger.LogCtx(ctx, "message", "waiting for tenant cluster API to be reachable")
 
@@ -117,6 +99,24 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 			return microerror.Mask(err)
 		}
 		r.logger.LogCtx(ctx, "message", "API is now reachable")
+	}
+
+	// Create ctrl client for the workload cluster
+	var ctrlClient client.Client
+	{
+		var err error
+		c, err := k8sclient.NewClients(k8sclient.ClientsConfig{
+			Logger: r.logger,
+			SchemeBuilder: k8sclient.SchemeBuilder{
+				applicationv1alpha1.AddToScheme,
+			},
+			RestConfig: restConfig,
+		})
+		if err != nil {
+			return microerror.Mask(err)
+		}
+
+		ctrlClient = c.CtrlClient()
 	}
 
 	{
