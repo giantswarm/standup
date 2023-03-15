@@ -6,9 +6,11 @@ require (
 	github.com/Masterminds/semver/v3 v3.1.1
 	github.com/fsnotify/fsnotify v1.5.1 // indirect
 	github.com/giantswarm/apiextensions/v2 v2.6.2
+	github.com/giantswarm/apiextensions/v3 v3.30.0
 	github.com/giantswarm/backoff v1.0.0
 	github.com/giantswarm/errors v0.3.0
 	github.com/giantswarm/k8sclient/v4 v4.1.0
+	github.com/giantswarm/k8sclient/v5 v5.12.0
 	github.com/giantswarm/microerror v0.4.0
 	github.com/giantswarm/micrologger v0.6.0
 	github.com/go-openapi/runtime v0.19.20 // indirect
