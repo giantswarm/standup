@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.4.2] - 2023-03-15
+
 ### Fixed
 
 - Wait for tenant API to be available before creating ctrl client in `wait ready`.
@@ -156,7 +158,8 @@ passed via `--cluster`.
 - Removed `--wait` flag from `create` command.
 - Removed unused `test` command.
 
-[Unreleased]: https://github.com/giantswarm/standup/compare/v3.4.1...HEAD
+[Unreleased]: https://github.com/giantswarm/standup/compare/v3.4.2...HEAD
+[3.4.2]: https://github.com/giantswarm/standup/compare/v3.4.1...v3.4.2
 [3.4.1]: https://github.com/giantswarm/standup/compare/v3.4.0...v3.4.1
 [3.4.0]: https://github.com/giantswarm/standup/compare/v3.3.0...v3.4.0
 [3.3.0]: https://github.com/giantswarm/standup/compare/v3.2.0...v3.3.0
