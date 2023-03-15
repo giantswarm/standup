@@ -15,6 +15,7 @@ FROM quay.io/giantswarm/alpine:3.16.2 as base
 USER root
 RUN apk add --no-cache git jq
 
+RUN adduser -D giantswarm
 USER giantswarm
 COPY --from=binaries /binaries/* /usr/bin/
 COPY ./standup /usr/local/bin/standup
