@@ -77,7 +77,7 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 		return microerror.Mask(err)
 	}
 
-	// Create k8s clients for the control plane
+	// Create ctrl client for the workload cluster
 	var ctrlClient client.Client
 	{
 		var err error
