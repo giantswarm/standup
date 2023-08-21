@@ -17,7 +17,7 @@ require (
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/google/go-cmp v0.5.9
 	github.com/mitchellh/mapstructure v1.4.3 // indirect
-	github.com/spf13/cobra v1.5.0
+	github.com/spf13/cobra v1.7.0
 	go.mongodb.org/mongo-driver v1.10.0 // indirect
 	golang.org/x/oauth2 v0.0.0-20211104180415-d3ed0bb246c8 // indirect
 	google.golang.org/protobuf v1.27.1 // indirect
