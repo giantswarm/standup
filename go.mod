@@ -15,7 +15,7 @@ require (
 	github.com/giantswarm/micrologger v0.6.0
 	github.com/go-openapi/runtime v0.19.20 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
-	github.com/google/go-cmp v0.5.9
+	github.com/google/go-cmp v0.6.0
 	github.com/mitchellh/mapstructure v1.4.3 // indirect
 	github.com/spf13/cobra v1.5.0
 	go.mongodb.org/mongo-driver v1.10.0 // indirect
