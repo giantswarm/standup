@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -153,7 +152,7 @@ func (r *runner) createRelease(ctx context.Context, release *v1alpha1.Release) e
 	{
 		providerPath := filepath.Join(r.flag.Output, "provider")
 		r.logger.LogCtx(ctx, "message", fmt.Sprintf("writing provider to path %s", providerPath))
-		err := ioutil.WriteFile(providerPath, []byte(r.flag.Provider), 0644) //#nosec
+		err := os.WriteFile(providerPath, []byte(r.flag.Provider), 0644) //#nosec
 		if err != nil {
 			return microerror.Mask(err)
 		}
@@ -163,7 +162,7 @@ func (r *runner) createRelease(ctx context.Context, release *v1alpha1.Release) e
 	{
 		installationPath := filepath.Join(r.flag.Output, "installation")
 		r.logger.LogCtx(ctx, "message", fmt.Sprintf("writing target installation (%s) to path %s", installation, installationPath))
-		err := ioutil.WriteFile(installationPath, []byte(installation), 0644) //#nosec
+		err := os.WriteFile(installationPath, []byte(installation), 0644) //#nosec
 		if err != nil {
 			return microerror.Mask(err)
 		}
@@ -183,7 +182,7 @@ func (r *runner) createRelease(ctx context.Context, release *v1alpha1.Release) e
 	{
 		releaseIDPath := filepath.Join(r.flag.Output, "release-id")
 		r.logger.LogCtx(ctx, "message", fmt.Sprintf("writing release ID to path %s", releaseIDPath))
-		err := ioutil.WriteFile(releaseIDPath, []byte(release.Name), 0644) //#nosec
+		err := os.WriteFile(releaseIDPath, []byte(release.Name), 0644) //#nosec
 		if err != nil {
 			return microerror.Mask(err)
 		}
@@ -223,7 +222,7 @@ func (r *runner) findLatestRelease(ctx context.Context) (*v1alpha1.Release, erro
 	provider := r.flag.Provider
 	r.logger.LogCtx(ctx, "message", fmt.Sprintf("determining latest release for provider %s", provider))
 	{
-		entries, err := ioutil.ReadDir(filepath.Join(r.flag.ReleasesPath, provider))
+		entries, err := os.ReadDir(filepath.Join(r.flag.ReleasesPath, provider))
 		if err != nil {
 			return nil, microerror.Mask(err)
 		}
@@ -256,7 +255,7 @@ func (r *runner) findLatestRelease(ctx context.Context) (*v1alpha1.Release, erro
 		releasePath = filepath.Join(r.flag.ReleasesPath, provider, fmt.Sprintf("v%s", latest.String()), "release.yaml")
 	}
 
-	releaseYAML, err := ioutil.ReadFile(releasePath)
+	releaseYAML, err := os.ReadFile(releasePath)
 	if err != nil {
 		return nil, microerror.Mask(err)
 	}

@@ -3,7 +3,7 @@ package testoperatorrelease
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -35,7 +35,7 @@ func (r *runner) updateFromRequests(ctx context.Context, release *v1alpha1.Relea
 	{
 		requestsPath := filepath.Join(r.flag.ReleasesPath, r.flag.Provider, "requests.yaml")
 
-		releaseYAML, err := ioutil.ReadFile(requestsPath)
+		releaseYAML, err := os.ReadFile(requestsPath)
 		if err != nil {
 			return microerror.Mask(err)
 		}
