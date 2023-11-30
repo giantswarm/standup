@@ -1,7 +1,7 @@
 package config
 
 import (
-	"io/ioutil"
+	"os"
 
 	"github.com/giantswarm/microerror"
 	"sigs.k8s.io/yaml"
@@ -15,7 +15,7 @@ type ProviderConfig struct {
 }
 
 func LoadProviderConfig(path string, provider string) (*ProviderConfig, error) {
-	configData, err := ioutil.ReadFile(path)
+	configData, err := os.ReadFile(path)
 	if err != nil {
 		return nil, microerror.Mask(err)
 	}
