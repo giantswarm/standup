@@ -19,17 +19,17 @@ func Test_generateReleaseName(t *testing.T) {
 		{
 			name:     "case 0: simple release version",
 			input:    "v13.0.0",
-			expected: "v13.0.0-" + strconv.Itoa(int(time.Now().Unix())),
+			expected: "v13.0.0-" + strconv.Itoa(int(time.Now().Unix())), //nolint:goconst
 		},
 		{
 			name:     "case 1: alpha release version",
 			input:    "v13.0.0-alpha3",
-			expected: "v13.0.0-" + strconv.Itoa(int(time.Now().Unix())),
+			expected: "v13.0.0-" + strconv.Itoa(int(time.Now().Unix())), //nolint:goconst
 		},
 		{
 			name:     "case 2: beta release version",
 			input:    "v13.0.0-beta1",
-			expected: "v13.0.0-" + strconv.Itoa(int(time.Now().Unix())),
+			expected: "v13.0.0-" + strconv.Itoa(int(time.Now().Unix())), //nolint:goconst
 		},
 		{
 			name:     "case 3: non-standard release version",
