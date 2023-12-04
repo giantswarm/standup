@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
+	"os"
 	"time"
 
 	applicationv1alpha1 "github.com/giantswarm/apiextensions/v3/pkg/apis/application/v1alpha1"
@@ -56,7 +56,7 @@ func labelsToSelector(labels map[string]string) string {
 }
 
 func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
-	kubeconfig, err := ioutil.ReadFile(r.flag.Kubeconfig)
+	kubeconfig, err := os.ReadFile(r.flag.Kubeconfig)
 	if err != nil {
 		return microerror.Mask(err)
 	}
