@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math/rand"
+	"os"
 	"path/filepath"
 	"time"
 
@@ -142,7 +142,7 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 	{
 		clusterIDPath := filepath.Join(r.flag.Output, "cluster-id")
 		r.logger.LogCtx(ctx, "message", fmt.Sprintf("writing cluster ID to path %s", clusterIDPath))
-		err := ioutil.WriteFile(clusterIDPath, []byte(clusterID), 0644) //#nosec
+		err := os.WriteFile(clusterIDPath, []byte(clusterID), 0644) //#nosec
 		if err != nil {
 			return microerror.Mask(err)
 		}

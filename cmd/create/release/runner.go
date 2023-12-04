@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -126,7 +126,7 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 
 		r.logger.LogCtx(ctx, "message", "determined target installation is "+installation)
 
-		releaseYAML, err := ioutil.ReadFile(releasePath)
+		releaseYAML, err := os.ReadFile(releasePath)
 		if err != nil {
 			return microerror.Mask(err)
 		}
@@ -183,7 +183,7 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 	{
 		providerPath := filepath.Join(r.flag.Output, "provider")
 		r.logger.LogCtx(ctx, "message", fmt.Sprintf("writing provider (%s) to path %s", provider, providerPath))
-		err := ioutil.WriteFile(providerPath, []byte(provider), 0644) //#nosec
+		err := os.WriteFile(providerPath, []byte(provider), 0644) //#nosec
 		if err != nil {
 			return microerror.Mask(err)
 		}
@@ -193,7 +193,7 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 	{
 		installationPath := filepath.Join(r.flag.Output, "installation")
 		r.logger.LogCtx(ctx, "message", fmt.Sprintf("writing target installation (%s) to path %s", installation, installationPath))
-		err := ioutil.WriteFile(installationPath, []byte(installation), 0644) //#nosec
+		err := os.WriteFile(installationPath, []byte(installation), 0644) //#nosec
 		if err != nil {
 			return microerror.Mask(err)
 		}
@@ -216,7 +216,7 @@ func (r *runner) run(ctx context.Context, _ *cobra.Command, _ []string) error {
 	{
 		releaseIDPath := filepath.Join(r.flag.Output, "release-id")
 		r.logger.LogCtx(ctx, "message", fmt.Sprintf("writing release ID to path %s", releaseIDPath))
-		err := ioutil.WriteFile(releaseIDPath, []byte(release.Name), 0644) //#nosec
+		err := os.WriteFile(releaseIDPath, []byte(release.Name), 0644) //#nosec
 		if err != nil {
 			return microerror.Mask(err)
 		}
