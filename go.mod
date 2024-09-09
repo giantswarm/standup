@@ -6,13 +6,13 @@ require (
 	github.com/Masterminds/semver/v3 v3.1.1
 	github.com/giantswarm/apiextensions/v2 v2.6.2
 	github.com/giantswarm/apiextensions/v3 v3.30.0
-	github.com/giantswarm/backoff v1.0.0
+	github.com/giantswarm/backoff v1.0.1
 	github.com/giantswarm/errors v0.3.0
 	github.com/giantswarm/k8sclient/v4 v4.1.0
 	github.com/giantswarm/k8sclient/v5 v5.12.0
-	github.com/giantswarm/microerror v0.4.0
-	github.com/giantswarm/micrologger v0.6.0
-	github.com/google/go-cmp v0.5.9
+	github.com/giantswarm/microerror v0.4.1
+	github.com/giantswarm/micrologger v1.1.1
+	github.com/google/go-cmp v0.6.0
 	github.com/spf13/cobra v1.5.0
 	k8s.io/api v0.18.19
 	k8s.io/apimachinery v0.18.19
@@ -24,15 +24,15 @@ require (
 require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/blang/semver v3.5.1+incompatible // indirect
-	github.com/cenkalti/backoff/v4 v4.1.2 // indirect
+	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/docker/distribution v2.7.1+incompatible // indirect
 	github.com/evanphx/json-patch v4.9.0+incompatible // indirect
 	github.com/fsnotify/fsnotify v1.5.1 // indirect
 	github.com/go-kit/log v0.2.1 // indirect
-	github.com/go-logfmt/logfmt v0.5.1 // indirect
-	github.com/go-logr/logr v0.1.0 // indirect
+	github.com/go-logfmt/logfmt v0.6.0 // indirect
+	github.com/go-logr/logr v1.3.0 // indirect
 	github.com/go-openapi/errors v0.19.6 // indirect
 	github.com/go-openapi/runtime v0.19.20 // indirect
 	github.com/go-openapi/spec v0.19.8 // indirect
