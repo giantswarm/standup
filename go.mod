@@ -3,7 +3,7 @@ module github.com/giantswarm/standup
 go 1.19
 
 require (
-	github.com/Masterminds/semver/v3 v3.1.1
+	github.com/Masterminds/semver/v3 v3.3.0
 	github.com/giantswarm/apiextensions/v2 v2.6.2
 	github.com/giantswarm/apiextensions/v3 v3.30.0
 	github.com/giantswarm/backoff v1.0.0
